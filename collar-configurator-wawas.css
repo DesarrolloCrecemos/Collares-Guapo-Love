@@ -1,0 +1,1390 @@
+/* Configurador de Collar - Estilo Wawas */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.configurator-wrapper {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    max-width: 1400px;
+    margin: 20px auto;
+    padding: 20px;
+}
+
+/* Layout principal: carrusel izquierda + panel derecha */
+.wawas-layout {
+    display: grid;
+    grid-template-columns: 500px 1fr;
+    gap: 50px;
+    align-items: start;
+}
+
+/* Columna izquierda: Carrusel de imágenes */
+
+/* Carrusel de imágenes */
+.product-carousel {
+    width: 100%;
+}
+
+.carousel-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.carousel-images {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.carousel-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+    background: #f5f5f5;
+}
+
+.carousel-image.active {
+    opacity: 1;
+    z-index: 1;
+}
+
+.carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.carousel-btn:hover {
+    background: white;
+    transform: translateY(-50%) scale(1.15);
+}
+
+.carousel-btn.prev {
+    left: 15px;
+}
+
+.carousel-btn.next {
+    right: 15px;
+}
+
+.carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ddd;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+    border: none;
+    outline: none;
+    flex-shrink: 0;
+}
+
+.dot.active {
+    background: #333;
+    transform: scale(1.4);
+}
+
+.dot:hover {
+    background: #666;
+}
+
+/* Previsualizador del collar (ahora dentro del panel de config) */
+.collar-preview-section {
+    margin-top: 15px;
+    margin-bottom: 15px;
+    padding: 12px;
+    background: #f9f9f9;
+    border-radius: 10px;
+}
+
+.collar-visual-display {
+    width: 100%;
+    background: linear-gradient(135deg, #f5f5f5 0%, #e9e9e9 100%);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 15px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    position: relative;
+}
+
+.collar-band-preview {
+    min-width: 200px;
+    width: auto;
+    max-width: 100%;
+    height: 55px;
+    border-radius: 28px;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 25px;
+}
+
+/* Colores del collar */
+.collar-band-preview.collar1 { background: #FC7433; }
+.collar-band-preview.collar2 { background: #000000; }
+.collar-band-preview.collar3 { background: #0347F2; }
+.collar-band-preview.collar4 { background: #F1FF3A; }
+.collar-band-preview.collar5 { background: #FF136F; }
+.collar-band-preview.collar6 { background: #D60C0C; }
+
+.charms-on-collar-preview {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+    justify-content: center;
+    align-items: center;
+    padding: 0 5px;
+    white-space: nowrap;
+}
+
+.charm-item-visual {
+    font-size: 28px;
+    font-weight: 900;
+    cursor: pointer;
+    padding: 3px;
+    background: transparent;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+    position: relative;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.charm-item-visual::after {
+    content: '×';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    color: #e74c3c;
+    border-radius: 50%;
+    font-size: 16px;
+    font-weight: bold;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    border: 2px solid #e74c3c;
+}
+
+.charm-item-visual:hover {
+    transform: scale(1.15);
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6));
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.charm-item-visual:hover::after {
+    display: flex;
+}
+
+.charm-item-visual img {
+    width: 32px;
+    height: 32px;
+    display: block;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+}
+
+.clear-all-btn {
+    display: none; /* Oculto por defecto, se muestra cuando hay charms */
+    align-items: center;
+    justify-content: center;
+    width: 200px;
+    margin: 20px auto;
+    padding: 12px 24px;
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(255, 68, 68, 0.3);
+}
+
+.clear-all-btn:hover {
+    background: #ff2222;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 68, 68, 0.4);
+}
+
+.clear-all-btn span {
+    font-size: 18px;
+    margin-right: 8px;
+}
+
+/* Imagen de referencia pequeña */
+.reference-image-box-small {
+    margin-top: 15px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.reference-image-small {
+    width: 100%;
+    max-width: 180px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.product-summary {
+    background: white;
+    padding: 22px 24px;
+    border-radius: 12px;
+    margin-top: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.summary-title {
+    font-size: 16px;
+    color: #374151;
+    margin: 0 0 12px 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.product-summary p {
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 15px;
+    color: #555;
+}
+
+.product-summary p:last-child {
+    border-bottom: none;
+}
+
+.product-summary strong {
+    color: #333;
+    margin-right: 10px;
+}
+
+/* Tips e indicaciones */
+.product-tips {
+    margin-top: 15px;
+    background: #fefce8;
+    border: 1px solid #fde68a;
+    border-radius: 12px;
+    padding: 18px;
+}
+
+.tip-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(253, 230, 138, 0.6);
+}
+
+.tip-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.tip-item:first-child {
+    padding-top: 0;
+}
+
+.tip-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    line-height: 1.4;
+}
+
+.tip-item p {
+    margin: 0;
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+.tip-item p strong {
+    color: #374151;
+}
+
+/* Columna derecha: Panel de configuración */
+.config-panel-column {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.06);
+}
+
+.config-step-box {
+    margin-bottom: 35px;
+    padding-bottom: 25px;
+    border-bottom: 1px solid #eee;
+}
+
+.config-step-box:last-child {
+    border-bottom: none;
+}
+
+.config-step-box h4 {
+    font-size: 18px;
+    color: #333;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.step-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    opacity: 0.8;
+}
+
+/* Paso 1: Selector de tamaño */
+.size-selector-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+}
+
+.size-option-btn {
+    background: #f8f8f8;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 12px 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.size-option-btn:hover {
+    border-color: #999;
+    background: #f0f0f0;
+}
+
+.size-option-btn.active {
+    background: #333;
+    border-color: #333;
+    color: white;
+}
+
+.size-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.size-cm {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+/* Paso 2: Selector de color del collar */
+.collar-colors-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+}
+
+.collar-color-option {
+    width: 100%;
+    height: 50px;
+    border: 3px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.collar-color-option:hover {
+    transform: scale(1.05);
+}
+
+.collar-color-option.active {
+    border-color: #000;
+    box-shadow: 0 0 0 2px white, 0 0 0 4px #000;
+}
+
+.collar-color-option.collar1 { background: #FC7433; }
+.collar-color-option.collar2 { background: #000000; }
+.collar-color-option.collar3 { background: #0347F2; }
+.collar-color-option.collar4 { background: #F1FF3A; }
+.collar-color-option.collar5 { background: #FF136F; }
+.collar-color-option.collar6 { background: #D60C0C; }
+
+/* Paso 3: Personalizar charms */
+.charms-info {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+/* Selector de colores de emojis */
+.emoji-colors-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 10px;
+}
+
+.emoji-color-selector {
+    border: 3px solid transparent;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+}
+
+.emoji-color-selector:hover {
+    transform: scale(1.1);
+}
+
+.emoji-color-selector.active {
+    border-color: #333;
+    box-shadow: 0 0 0 2px white, 0 0 0 4px #333;
+}
+
+/* Botones especiales Gold y Silver */
+.emoji-color-selector.emoji-gold .color-circle,
+.emoji-color-selector.emoji-silver .color-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    /* La textura se aplicará por JavaScript */
+}
+
+.emoji-color-selector.emoji-gold:hover {
+    transform: scale(1.15) rotate(5deg);
+}
+
+.emoji-color-selector.emoji-silver:hover {
+    transform: scale(1.15) rotate(-5deg);
+}
+
+.emoji-color-selector.emoji-gold.active {
+    border-color: #DAA520;
+    box-shadow: 0 0 0 2px white, 0 0 0 4px #DAA520, 0 0 15px rgba(218, 165, 32, 0.5);
+}
+
+.emoji-color-selector.emoji-silver.active {
+    border-color: #C0C0C0;
+    box-shadow: 0 0 0 2px white, 0 0 0 4px #C0C0C0, 0 0 15px rgba(192, 192, 192, 0.5);
+}
+
+.color-circle {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+}
+
+/* Grid de emojis */
+.emojis-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #fafafa;
+    border-radius: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.emoji-item {
+    width: 100%;
+    aspect-ratio: 1;
+    background: white;
+    border: 2px solid #eee;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.emoji-item:hover {
+    border-color: #999;
+    transform: scale(1.05);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.emoji-item img {
+    width: 35px;
+    height: 35px;
+    object-fit: contain;
+}
+
+/* Teclado de letras */
+.letters-number-keyboard {
+    background: #f5f5f5;
+    border-radius: 10px;
+    padding: 15px;
+}
+
+.keys-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    justify-content: center;
+}
+
+.keys-row:last-child {
+    margin-bottom: 0;
+}
+
+.letter-key {
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    width: 45px;
+    height: 45px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #A080FF;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.letter-key:hover {
+    background: #f0f0f0;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.letter-key:active {
+    transform: translateY(0);
+}
+
+/* Estilos especiales para teclas cuando Gold o Silver están activos */
+.emoji-color-selector.emoji-gold.active ~ .letters-number-keyboard .letter-key,
+.emoji-gold.active ~ * .letter-key {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%);
+    border-color: #DAA520;
+    color: #8B4513;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+}
+
+.emoji-color-selector.emoji-silver.active ~ .letters-number-keyboard .letter-key,
+.emoji-silver.active ~ * .letter-key {
+    background: linear-gradient(135deg, #F0F0F0 0%, #C0C0C0 50%, #E8E8E8 100%);
+    border-color: #A9A9A9;
+    color: #404040;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+    box-shadow: 0 2px 8px rgba(192, 192, 192, 0.3);
+}
+
+/* ==================== ELEMENTOS DECORATIVOS ==================== */
+
+/* Iconos decorativos en esquinas superiores */
+.decorative-corner {
+    position: absolute;
+    z-index: 5;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.decorative-corner.top-left {
+    top: -10px;
+    left: -10px;
+}
+
+.decorative-corner.top-right {
+    top: -10px;
+    right: -10px;
+}
+
+.decorative-corner .deco-icon {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    animation: float 3s ease-in-out infinite;
+}
+
+/* Iconos decorativos alrededor del collar */
+.collar-deco-icon {
+    position: absolute;
+    z-index: 3;
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.collar-deco-icon.top {
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.collar-deco-icon.left {
+    top: 50%;
+    left: -40px;
+    transform: translateY(-50%);
+}
+
+.collar-deco-icon.right {
+    top: 50%;
+    right: -40px;
+    transform: translateY(-50%);
+}
+
+.collar-deco-icon .floating-icon {
+    width: 35px;
+    height: 35px;
+    object-fit: contain;
+    animation: float 2.5s ease-in-out infinite;
+}
+
+.collar-deco-icon .floating-icon.pulse {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* Separadores decorativos entre pasos */
+.step-separator {
+    text-align: center;
+    padding: 15px 0;
+    opacity: 0.5;
+}
+
+.step-separator .divider-icon {
+    width: 80px;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Marcas autorizadas */
+.authorized-brands {
+    margin-top: 15px;
+    padding: 8px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.brands-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap;
+}
+
+.brand-item {
+    flex: 0 1 auto;
+    background: #f9f9f9;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    max-width: 48%;
+}
+
+.brand-item:hover {
+    transform: translateY(-2px);
+    background: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.brand-logo {
+    height: auto;
+    width: 100%;
+    max-width: 200px;
+    max-height: 150px;
+    object-fit: contain;
+    filter: grayscale(20%);
+    transition: filter 0.3s ease;
+    display: block;
+}
+
+.brand-item:hover .brand-logo {
+    filter: grayscale(0%);
+}
+
+/* ==================== SECCIÓN DE CARRITO ==================== */
+
+.cart-section {
+    margin-top: 30px;
+    padding: 25px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+}
+
+.price-display {
+    text-align: center;
+    margin-bottom: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px;
+    border-radius: 10px;
+}
+
+.price-label {
+    font-size: 15px;
+    color: #6b7280;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.price-amount {
+    font-size: 32px;
+    font-weight: 700;
+    color: #1f2937;
+    display: block;
+}
+
+.add-to-cart-btn {
+    width: 100%;
+    padding: 18px 30px;
+    background: white;
+    color: #667eea;
+    border: none;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.add-to-cart-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+    background: #f8f9fa;
+}
+
+.add-to-cart-btn:active {
+    transform: translateY(-1px);
+}
+
+.add-to-cart-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.cart-icon {
+    font-size: 24px;
+}
+
+.cart-text {
+    letter-spacing: 0.5px;
+}
+
+.validation-message {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    display: none;
+}
+
+.validation-message.error {
+    display: block;
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+}
+
+.validation-message.success {
+    display: block;
+    background: #d1fae5;
+    color: #059669;
+    border: 1px solid #6ee7b7;
+}
+
+/* Ajuste para product-image-column */
+.product-image-column {
+    position: relative;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .wawas-layout {
+        grid-template-columns: 400px 1fr;
+        gap: 30px;
+    }
+    
+    .collar-band-preview {
+        min-width: 200px;
+        height: 50px;
+    }
+
+    .config-panel-column {
+        padding: 24px;
+    }
+}
+
+@media (max-width: 992px) {
+    .configurator-wrapper {
+        padding: 15px;
+    }
+
+    .wawas-layout {
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+    
+    .product-image-column {
+        position: static;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+
+    .config-panel-column {
+        padding: 20px;
+    }
+
+    .config-step-box {
+        margin-bottom: 25px;
+        padding-bottom: 20px;
+    }
+
+    .collar-visual-display {
+        padding: 15px 10px;
+    }
+
+    .collar-band-preview {
+        min-width: 180px;
+        height: 50px;
+        padding: 0 20px;
+    }
+
+    .charm-item-visual {
+        font-size: 24px;
+        padding: 2px;
+    }
+
+    .charm-item-visual img {
+        width: 28px;
+        height: 28px;
+    }
+
+    .cart-section {
+        padding: 20px;
+    }
+
+    .price-amount {
+        font-size: 28px;
+    }
+
+    .add-to-cart-btn {
+        padding: 15px 25px;
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 768px) {
+    .configurator-wrapper {
+        padding: 10px;
+        margin: 10px auto;
+    }
+
+    .wawas-layout {
+        gap: 20px;
+    }
+
+    /* Tamaños: 3 columnas en tablet pequeño, 5 sigue viéndose bien */
+    .size-selector-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+
+    .size-option-btn {
+        padding: 10px 6px;
+    }
+
+    .size-name {
+        font-size: 16px;
+    }
+
+    .size-cm {
+        font-size: 10px;
+    }
+
+    /* Colores del collar: 6 en una fila, más compactos */
+    .collar-colors-grid {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 8px;
+    }
+
+    .collar-color-option {
+        height: 40px;
+    }
+
+    /* Emojis: 5 columnas */
+    .emojis-grid {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        padding: 10px;
+        max-height: 180px;
+    }
+
+    .emoji-item img {
+        width: 28px;
+        height: 28px;
+    }
+
+    /* Colores de emojis: más compactos */
+    .emoji-colors-row {
+        gap: 6px;
+        padding: 10px;
+        flex-wrap: wrap;
+    }
+
+    .emoji-color-selector {
+        width: 38px;
+        height: 38px;
+    }
+
+    /* Teclado de letras: teclas más pequeñas */
+    .letters-number-keyboard {
+        padding: 10px;
+    }
+
+    .keys-row {
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+
+    .letter-key {
+        width: 38px;
+        height: 38px;
+        font-size: 14px;
+    }
+
+    /* Collar preview más compacto */
+    .collar-preview-section {
+        padding: 10px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+
+    .collar-visual-display {
+        padding: 12px 8px;
+    }
+
+    .collar-band-preview {
+        min-width: 150px;
+        height: 45px;
+        padding: 0 15px;
+        border-radius: 23px;
+    }
+
+    .charm-item-visual {
+        font-size: 20px;
+        padding: 2px;
+    }
+
+    .charm-item-visual img {
+        width: 24px;
+        height: 24px;
+    }
+
+    .charms-on-collar-preview {
+        gap: 2px;
+        padding: 0 3px;
+    }
+
+    /* Carrusel */
+    .carousel-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+    }
+
+    .carousel-btn.prev {
+        left: 8px;
+    }
+
+    .carousel-btn.next {
+        right: 8px;
+    }
+
+    /* Logos */
+    .brand-logo {
+        max-width: 140px;
+        max-height: 100px;
+    }
+
+    /* Resumen */
+    .product-summary {
+        padding: 16px 18px;
+    }
+
+    .summary-title {
+        font-size: 15px;
+    }
+
+    /* Tips */
+    .product-tips {
+        padding: 14px;
+    }
+
+    .tip-item p {
+        font-size: 12px;
+    }
+
+    /* Carrito */
+    .cart-section {
+        padding: 18px;
+        margin-top: 25px;
+    }
+
+    .price-amount {
+        font-size: 26px;
+    }
+
+    .add-to-cart-btn {
+        padding: 14px 20px;
+        font-size: 15px;
+    }
+
+    .cart-icon {
+        font-size: 20px;
+    }
+
+    /* Step box */
+    .config-step-box h4 {
+        font-size: 16px;
+    }
+
+    .step-icon {
+        width: 26px;
+        height: 26px;
+    }
+
+    .config-panel-column {
+        padding: 15px;
+    }
+
+    .clear-all-btn {
+        width: auto;
+        padding: 10px 18px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .configurator-wrapper {
+        padding: 8px;
+        margin: 5px auto;
+    }
+
+    /* Tamaños: 3 columnas compactas */
+    .size-selector-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+    }
+
+    .size-option-btn {
+        padding: 8px 4px;
+        border-radius: 6px;
+    }
+
+    .size-name {
+        font-size: 14px;
+    }
+
+    .size-cm {
+        font-size: 9px;
+    }
+
+    /* Colores del collar */
+    .collar-colors-grid {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 6px;
+    }
+
+    .collar-color-option {
+        height: 35px;
+        border-radius: 6px;
+    }
+
+    /* Emojis: 4 columnas en móvil pequeño */
+    .emojis-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        padding: 8px;
+        max-height: 160px;
+    }
+
+    .emoji-item {
+        border-radius: 6px;
+    }
+
+    .emoji-item img {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Colores de emojis */
+    .emoji-colors-row {
+        gap: 4px;
+        padding: 8px;
+    }
+
+    .emoji-color-selector {
+        width: 32px;
+        height: 32px;
+        border-width: 2px;
+    }
+
+    /* Teclado de letras: aún más compacto */
+    .letters-number-keyboard {
+        padding: 8px;
+        border-radius: 8px;
+    }
+
+    .keys-row {
+        gap: 4px;
+        margin-bottom: 4px;
+    }
+
+    .letter-key {
+        width: 34px;
+        height: 34px;
+        font-size: 13px;
+        border-radius: 5px;
+        border-width: 1.5px;
+    }
+
+    /* Collar preview */
+    .collar-band-preview {
+        min-width: 120px;
+        height: 40px;
+        padding: 0 12px;
+        border-radius: 20px;
+    }
+
+    .charm-item-visual {
+        font-size: 16px;
+        padding: 1px;
+    }
+
+    .charm-item-visual img {
+        width: 20px;
+        height: 20px;
+    }
+
+    .charm-item-visual::after {
+        width: 16px;
+        height: 16px;
+        font-size: 12px;
+        top: -6px;
+        right: -6px;
+    }
+
+    .charms-on-collar-preview {
+        gap: 1px;
+        padding: 0 2px;
+    }
+
+    /* Botones carrusel */
+    .carousel-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+
+    .carousel-btn.prev {
+        left: 5px;
+    }
+
+    .carousel-btn.next {
+        right: 5px;
+    }
+
+    .carousel-dots {
+        margin-top: 12px;
+        gap: 8px;
+    }
+
+    .dot {
+        width: 8px;
+        height: 8px;
+    }
+
+    /* Logos */
+    .authorized-brands {
+        padding: 6px;
+    }
+
+    .brand-logo {
+        max-width: 110px;
+        max-height: 80px;
+    }
+
+    /* Resumen */
+    .product-summary {
+        padding: 14px 16px;
+        margin-top: 15px;
+    }
+
+    .summary-title {
+        font-size: 14px;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+    }
+
+    .product-summary p {
+        font-size: 13px;
+        padding: 8px 0;
+    }
+
+    /* Tips */
+    .product-tips {
+        padding: 12px;
+        margin-top: 12px;
+    }
+
+    .tip-icon {
+        font-size: 16px;
+    }
+
+    .tip-item p {
+        font-size: 11px;
+    }
+
+    .tip-item {
+        gap: 8px;
+        padding: 8px 0;
+    }
+
+    /* Carrito */
+    .cart-section {
+        padding: 15px;
+        margin-top: 20px;
+        border-radius: 10px;
+    }
+
+    .price-display {
+        padding: 12px;
+        margin-bottom: 15px;
+    }
+
+    .price-label {
+        font-size: 13px;
+    }
+
+    .price-amount {
+        font-size: 24px;
+    }
+
+    .add-to-cart-btn {
+        padding: 14px 18px;
+        font-size: 14px;
+        border-radius: 8px;
+        gap: 8px;
+    }
+
+    .cart-icon {
+        font-size: 18px;
+    }
+
+    /* Config panel */
+    .config-panel-column {
+        padding: 12px;
+        border-radius: 10px;
+    }
+
+    .config-step-box {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+    }
+
+    .config-step-box h4 {
+        font-size: 15px;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .step-icon {
+        width: 22px;
+        height: 22px;
+    }
+
+    .charms-info {
+        font-size: 12px;
+        margin-bottom: 10px;
+    }
+
+    .clear-all-btn {
+        width: auto;
+        padding: 8px 14px;
+        font-size: 12px;
+        margin: 12px auto;
+    }
+
+    .clear-all-btn span {
+        font-size: 14px;
+        margin-right: 5px;
+    }
+}

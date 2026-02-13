@@ -1,0 +1,499 @@
+/* Configurador de Collar - Sistema de Teclado */
+
+/* Reset básico */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Contenedor principal */
+.configurator-wrapper {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    padding: 30px;
+    max-width: 1200px;
+    margin: 20px auto;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.configurator-wrapper h4 {
+    color: #333;
+    font-size: 1.1em;
+    margin: 15px 0 12px 0;
+    font-weight: 600;
+}
+
+/* ========== LAYOUT DE DOS COLUMNAS ========== */
+.collar-layout {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    gap: 40px;
+    align-items: start;
+}
+
+/* Columna izquierda: Vista previa */
+.collar-preview-column {
+    position: sticky;
+    top: 20px;
+}
+
+.collar-visual-container {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+}
+
+.collar-image-wrapper {
+    margin-bottom: 20px;
+}
+
+.collar-visual {
+    background: #fff;
+    border-radius: 50%;
+    width: 300px;
+    height: 300px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow: inset 0 2px 20px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.collar-band {
+    width: 80%;
+    height: 40px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+/* Colores del collar */
+.collar-visual.collar1 .collar-band { background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%); }
+.collar-visual.collar2 .collar-band { background: linear-gradient(135deg, #2c2c2c 0%, #000000 100%); }
+.collar-visual.collar3 .collar-band { background: linear-gradient(135deg, #0066ff 0%, #0099ff 100%); }
+.collar-visual.collar4 .collar-band { background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); }
+.collar-visual.collar5 .collar-band { background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%); }
+.collar-visual.collar6 .collar-band { background: linear-gradient(135deg, #dc143c 0%, #ff0000 100%); }
+
+.charm-preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    min-height: 60px;
+    padding: 10px;
+}
+
+.collar-info-panel {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 1px 10px rgba(0, 0, 0, 0.05);
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.info-item:last-of-type {
+    border-bottom: none;
+    margin-bottom: 15px;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #666;
+}
+
+.info-value {
+    font-weight: 600;
+    color: #333;
+}
+
+.btn-vaciar-collar {
+    width: 100%;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 10px rgba(255, 107, 107, 0.3);
+}
+
+.btn-vaciar-collar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(255, 107, 107, 0.4);
+}
+
+/* Columna derecha: Controles */
+.collar-controls-column {
+    overflow-y: auto;
+    max-height: 800px;
+}
+
+.config-section {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+/* ========== PASO 1: TAMAÑO DEL COLLAR ========== */
+#size-container {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.size-button {
+    background: #f5f5f5;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 12px 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    font-weight: 600;
+    color: #666;
+    min-width: 70px;
+}
+
+.size-button:hover {
+    border-color: #999;
+    background: #e9e9e9;
+}
+
+.size-button.active {
+    background: #333;
+    border-color: #333;
+    color: white;
+}
+
+.size-button .medidas {
+    display: block;
+    font-size: 0.75em;
+    opacity: 0.8;
+    margin-top: 4px;
+}
+
+/* ========== PASO 2: COLOR DEL COLLAR ========== */
+.color-collar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 10px;
+    margin-bottom: 30px;
+    padding: 15px 0;
+}
+
+.collar-picker {
+    background: #f0f0f0;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 15px 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    font-weight: 500;
+    color: white;
+    font-size: 0.9em;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    min-height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.collar-picker:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.collar-picker.active {
+    border-color: #000;
+    border-width: 3px;
+}
+
+/* Colores específicos del collar */
+.collar1 { background: linear-gradient(135deg, #2c2c2c 0%, #000000 100%); }
+.collar2 { background: linear-gradient(135deg, #8B4513 0%, #654321 100%); }
+.collar3 { background: linear-gradient(135deg, #ff6b9d 0%, #ff1493 100%); }
+.collar4 { background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%); color: #333; }
+.collar5 { background: linear-gradient(135deg, #00bfff 0%, #0099cc 100%); }
+.collar6 { background: linear-gradient(135deg, #32cd32 0%, #228b22 100%); }
+
+/* ========== PASO 3: CONTENEDOR DE COLLAR ========== */
+#collar-container {
+    background: #f9f9f9;
+    border: 2px dashed #ddd;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    position: relative;
+}
+
+.charm-display {
+    font-size: 28px;
+    font-weight: bold;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.charm-display:hover {
+    transform: scale(1.1) rotate(-5deg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Botón de vaciar collar */
+.vaciar-collar {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.vaciar-collar:hover {
+    opacity: 1;
+}
+
+/* ========== PASO 3: SELECTOR DE COLORES ========== */
+.new-color-keyboard {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 15px 10px;
+    background: #f5f5f5;
+    border-radius: 8px;
+}
+
+.color-picker {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.color-picker:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.color-picker.active {
+    border-color: #000;
+    transform: scale(1.15);
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Colores específicos (color11 - color21) */
+.color11 { background: #A080FF; color: #A080FF; }
+.color12 { background: #1900FA; color: #1900FA; }
+.color13 { background: #00D6FF; color: #00D6FF; }
+.color14 { background: #FFFFFF; color: #FFFFFF; border-color: #ccc; }
+.color15 { background: #E1FF00; color: #E1FF00; }
+.color16 { background: #FF5A00; color: #FF5A00; }
+.color17 { background: #BA0000; color: #BA0000; }
+.color18 { background: #FF64DC; color: #FF64DC; }
+.color19 { background: #FF015B; color: #FF015B; }
+.color20 { background: #00FF00; color: #00FF00; }
+.color21 { background: #FFD700; color: #FFD700; }
+
+/* ========== TECLADO DE LETRAS ========== */
+.keyboard {
+    background: #fff;
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.keyboard .row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    justify-content: center;
+}
+
+.keyboard_key {
+    background: #f0f0f0;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    padding: 12px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    min-width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.keyboard_key:hover {
+    background: #e5e5e5;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.keyboard_key:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Aplicar colores a las teclas según la clase */
+.keyboard_key.color11 { border-color: #A080FF; color: #A080FF; }
+.keyboard_key.color12 { border-color: #1900FA; color: #1900FA; }
+.keyboard_key.color13 { border-color: #00D6FF; color: #00D6FF; }
+.keyboard_key.color14 { border-color: #888; color: #888; }
+.keyboard_key.color15 { border-color: #E1FF00; color: #c4dd00; }
+.keyboard_key.color16 { border-color: #FF5A00; color: #FF5A00; }
+.keyboard_key.color17 { border-color: #BA0000; color: #BA0000; }
+.keyboard_key.color18 { border-color: #FF64DC; color: #FF64DC; }
+.keyboard_key.color19 { border-color: #FF015B; color: #FF015B; }
+.keyboard_key.color20 { border-color: #00FF00; color: #00CC00; }
+.keyboard_key.color21 { border-color: #FFD700; color: #FFD700; }
+
+/* Phone charm */
+.keyboard_key img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+/* Botón de comenzar */
+#comenzar {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+#comenzar button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 15px 30px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+#comenzar button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+/* Título de elección de charms */
+.elije-charms {
+    text-align: center;
+    color: #666;
+    font-size: 1em;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+/* Campos de teléfono */
+#phone-title {
+    text-align: center;
+    margin-top: 20px;
+    color: #333;
+}
+
+#phone {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    margin-top: 10px;
+}
+
+#phone-level {
+    height: 4px;
+    background: #4caf50;
+    border-radius: 2px;
+    margin-top: 5px;
+    transition: width 0.3s ease;
+}
+
+/* Campos ocultos */
+.invisible,
+#general-values {
+    display: none !important;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .collar-layout {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+    
+    .collar-preview-column {
+        position: static;
+    }
+    
+    .collar-visual {
+        width: 250px;
+        height: 250px;
+    }
+}
+
+@media (max-width: 600px) {
+    .configurator-wrapper {
+        padding: 20px;
+        margin: 10px;
+    }
+    
+    .collar-visual {
+        width: 200px;
+        height: 200px;
+    }
+    
+    .keyboard .row {
+        gap: 4px;
+    }
+    
+    .keyboard_key {
+        min-width: 36px;
+        height: 36px;
+        font-size: 14px;
+        padding: 8px;
+    }
+    
+    .color-picker {
+        width: 35px;
+        height: 35px;
+    }
+}
