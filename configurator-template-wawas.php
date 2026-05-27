@@ -4,24 +4,42 @@
         <!-- Layout estilo Wawas: Carrusel izquierda + Panel derecha -->
         <div class="wawas-layout">
             
-            <!-- Columna izquierda: Carrusel de imágenes -->
+            <!-- Columna izquierda: Galería de imágenes -->
             <div class="product-image-column">
-                <div class="product-carousel">
-                    <div class="carousel-container">
-                        <button class="carousel-btn prev" onclick="moveCarousel(-1)">❮</button>
-                        <div class="carousel-images">
-                            <img src="<?php echo $plugin_url; ?>assets/collares/collarcoco.webp" alt="Collar frontal" class="carousel-image active">
-                            <img src="<?php echo $plugin_url; ?>assets/collares/Lateral.png" alt="Collar lateral" class="carousel-image">
-                            <img src="<?php echo $plugin_url; ?>assets/collares/piezas.png" alt="Piezas del collar" class="carousel-image">
-                            <img src="<?php echo $plugin_url; ?>assets/collares/posterior.png" alt="Collar posterior" class="carousel-image">
-                        </div>
-                        <button class="carousel-btn next" onclick="moveCarousel(1)">❯</button>
-                    </div>
-                    <div class="carousel-dots">
-                        <button class="dot active" onclick="goToSlide(0)" aria-label="Ir a imagen 1" type="button"></button>
-                        <button class="dot" onclick="goToSlide(1)" aria-label="Ir a imagen 2" type="button"></button>
-                        <button class="dot" onclick="goToSlide(2)" aria-label="Ir a imagen 3" type="button"></button>
-                        <button class="dot" onclick="goToSlide(3)" aria-label="Ir a imagen 4" type="button"></button>
+                <div class="product-gallery">
+                    <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_EAEB202C-DC9C-45ED-A08C-42EC52E5FEAF.png"
+                         id="collar-main-photo" class="collar-main-img" alt="Collar personalizado" />
+                    <div class="collar-thumbs">
+                        <button class="collar-thumb-btn active"
+                                data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_EAEB202C-DC9C-45ED-A08C-42EC52E5FEAF.png"
+                                onclick="setCollarPhoto(this)" type="button">
+                            <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_EAEB202C-DC9C-45ED-A08C-42EC52E5FEAF.png" alt="" />
+                        </button>
+                        <button class="collar-thumb-btn"
+                                data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_BCE18260-4220-4698-8799-DD8D61E4AF48.png"
+                                onclick="setCollarPhoto(this)" type="button">
+                            <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_BCE18260-4220-4698-8799-DD8D61E4AF48.png" alt="" />
+                        </button>
+                        <button class="collar-thumb-btn"
+                                data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_688B8955-0E94-419F-88C1-9E23283D68A6.png"
+                                onclick="setCollarPhoto(this)" type="button">
+                            <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_688B8955-0E94-419F-88C1-9E23283D68A6.png" alt="" />
+                        </button>
+                        <button class="collar-thumb-btn"
+                                data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_CCE6A1B8-8489-488D-B79E-FFB279D844C3.png"
+                                onclick="setCollarPhoto(this)" type="button">
+                            <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_CCE6A1B8-8489-488D-B79E-FFB279D844C3.png" alt="" />
+                        </button>
+                        <button class="collar-thumb-btn"
+                                data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_0E81D7C0-676A-41DA-BB74-8F35EC4327A9.png"
+                                onclick="setCollarPhoto(this)" type="button">
+                            <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_0E81D7C0-676A-41DA-BB74-8F35EC4327A9.png" alt="" />
+                        </button>
+                        <button class="collar-thumb-btn"
+                                data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_688B8955-0E94-419F-88C1-9E23283D68A6.png"
+                                onclick="setCollarPhoto(this)" type="button">
+                            <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_688B8955-0E94-419F-88C1-9E23283D68A6.png" alt="" />
+                        </button>
                     </div>
                 </div>
                 
@@ -29,10 +47,10 @@
                 <div class="authorized-brands">
                     <div class="brands-container">
                         <div class="brand-item">
-                            <img src="<?php echo $plugin_url; ?>assets/logos/PAGINA WEB COLLARES-126.png" alt="Marca autorizada" class="brand-logo">
+                            <img src="<?php echo $plugin_url; ?>assets/logos/PAGINA WEB COLLARES-126.png" alt="Guapolove" class="brand-logo">
                         </div>
                         <div class="brand-item">
-                            <img src="<?php echo $plugin_url; ?>assets/logos/PAGINA WEB COLLARES-127.png" alt="Marca autorizada" class="brand-logo">
+                            <img src="https://guapolove.com/wp-content/uploads/2026/03/IMG_6990.png" alt="Wawas" class="brand-logo">
                         </div>
                     </div>
                 </div>
@@ -53,15 +71,49 @@
                     </div>
                     <div class="tip-item">
                         <span class="tip-icon">✨</span>
-                        <p>Más de 5 charms tienen un costo adicional: <strong>+$4.000 (XS)</strong> / <strong>+$5.000 (otros tamaños)</strong> por cada charm extra.</p>
+                        <p>Más de 6 charms tienen un costo adicional: <strong>+$3.000 (XS)</strong> / <strong>+$4.000 (otros tamaños)</strong> por cada charm extra.</p>
                     </div>
                     <div class="tip-item">
                         <span class="tip-icon">🐾</span>
                         <p>Este es un producto <strong>totalmente personalizado</strong> y pensado por ti. ¡Hazlo único!</p>
                     </div>
                 </div>
+
+                <!-- Preview Collar Gummy -->
+                <?php
+                $gummy_preview_img = '';
+                $gummy_pid = (int) get_option('gummy_product_id', 0);
+                if ($gummy_pid) {
+                    $gummy_prod = wc_get_product($gummy_pid);
+                    if ($gummy_prod) {
+                        $gummy_img_id = $gummy_prod->get_image_id();
+                        if ($gummy_img_id) {
+                            $gummy_preview_img = wp_get_attachment_image_url($gummy_img_id, 'thumbnail');
+                        }
+                        if (!$gummy_preview_img) {
+                            $gallery = $gummy_prod->get_gallery_image_ids();
+                            if (!empty($gallery)) {
+                                $gummy_preview_img = wp_get_attachment_image_url($gallery[0], 'thumbnail');
+                            }
+                        }
+                    }
+                }
+                ?>
+                <?php if ($gummy_preview_img): ?>
+                <!-- Solo visible en desktop -->
+                <a href="<?php echo esc_url(get_option('gummy_page_url', '#')); ?>" class="gummy-preview-card gummy-preview-desktop" target="_blank">
+                    <div class="gummy-preview-badge">-10% con tu collar</div>
+                    <img src="<?php echo esc_url($gummy_preview_img); ?>" class="gummy-preview-img" alt="Collar Gummy" />
+                    <div class="gummy-preview-info">
+                        <p class="gummy-preview-tag">También te puede gustar</p>
+                        <p class="gummy-preview-name">Collar Gummy</p>
+                        <p class="gummy-preview-price">$49.900 COP</p>
+                        <p class="gummy-preview-cta">Ver más →</p>
+                    </div>
+                </a>
+                <?php endif; ?>
             </div>
-            
+
             <!-- Columna derecha: Panel de configuración -->
             <div class="config-panel-column">
                 
@@ -73,7 +125,7 @@
                     </h4>
                     <div class="size-selector-grid">
                         <button class="size-option-btn size-xs" onclick="changeCollarSize('xs')">
-                            <div class="size-name">XS</div>
+                            <div class="size-name">🐱 XS</div>
                             <div class="size-cm">17-29cm</div>
                         </button>
                         <button class="size-option-btn size-s active" onclick="changeCollarSize('s')">
@@ -93,8 +145,11 @@
                             <div class="size-cm">50-66cm</div>
                         </button>
                     </div>
+                    <div id="xs-cat-notice" style="display:none;margin-top:10px;padding:10px 14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;font-size:13px;color:#92400e;">
+                        🐱 <strong>Talla para gatos.</strong> Los charms dorados no están disponibles en talla XS.
+                    </div>
                 </div>
-                
+
                 <!-- Paso 2: Color del collar -->
                 <div class="config-step-box">
                     <h4>
@@ -130,7 +185,7 @@
                         <img src="<?php echo $plugin_url; ?>assets/icons/IMG_6560.jpg.png" alt="" class="step-icon">
                         <strong>Paso 3:</strong> Personaliza tus charms
                     </h4>
-                    <p class="charms-info">Mínimo 5 charms incluidos. Puedes agregar más (+$4.000 XS / +$5.000 otros)</p>
+                    <p class="charms-info">Incluye 6 charms. Puedes agregar más (+$3.000 XS / +$4.000 otros tamaños)</p>
                     
                     <!-- Selector de color de emojis (8 colores + Gold + Silver) -->
                     <div class="emoji-colors-row">
@@ -209,6 +264,20 @@
                     </div>
                 </div>
                 
+                <!-- Preview Gummy solo mobile (entre letras y carrito) -->
+                <?php if ($gummy_preview_img): ?>
+                <a href="<?php echo esc_url(get_option('gummy_page_url', '#')); ?>" class="gummy-preview-card gummy-preview-mobile" target="_blank">
+                    <div class="gummy-preview-badge">-10% con tu collar</div>
+                    <img src="<?php echo esc_url($gummy_preview_img); ?>" class="gummy-preview-img" alt="Collar Gummy" />
+                    <div class="gummy-preview-info">
+                        <p class="gummy-preview-tag">También te puede gustar</p>
+                        <p class="gummy-preview-name">Collar Gummy</p>
+                        <p class="gummy-preview-price">$49.900 COP</p>
+                        <p class="gummy-preview-cta">Ver más →</p>
+                    </div>
+                </a>
+                <?php endif; ?>
+
                 <!-- Sección de precio y carrito -->
                 <div class="cart-section">
                     <div class="price-display">
@@ -220,8 +289,50 @@
                         <span class="cart-text">Añadir al carrito</span>
                     </button>
                     <div class="validation-message" id="validation-message"></div>
+
+                    <!-- Bundle upsell (dentro del carrito) -->
+                    <div class="bundle-divider"><span>o llévate el combo</span></div>
+
+                    <div class="bundle-upsell-section" id="bundle-upsell">
+                        <div class="bundle-xs-offer" id="bundle-xs-offer" style="display:none">
+                            <div class="bundle-inner">
+                                <div class="bundle-left">
+                                    <span class="bundle-badge">-10% OFF</span>
+                                    <p class="bundle-title">COLLAR CHARMS XS<br>+ COLLAR GUMMY XS</p>
+                                    <p class="bundle-note">* Precio base (6 charms). Extras se cobran aparte.</p>
+                                </div>
+                                <div class="bundle-right">
+                                    <div class="bundle-price">$107.800</div>
+                                    <button class="bundle-add-btn" onclick="addBundleToCart('XS', 38000)">Añadir combo</button>
+                                    <a href="<?php echo esc_url(get_option('gummy_page_url', '#')); ?>" class="bundle-gummy-link" target="_blank">Ver Gummy →</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bundle-other-offer" id="bundle-other-offer" style="display:none">
+                            <div class="bundle-inner">
+                                <div class="bundle-left">
+                                    <span class="bundle-badge">-10% OFF</span>
+                                    <p class="bundle-title">COLLAR CHARMS <span id="bundle-collar-size">S</span><br>+ COLLAR GUMMY <span id="bundle-gummy-size">S</span></p>
+                                    <p class="bundle-note">* Precio base (6 charms). Extras se cobran aparte.</p>
+                                </div>
+                                <div class="bundle-right">
+                                    <div class="bundle-price">$113.100</div>
+                                    <button class="bundle-add-btn" onclick="addBundleToCart(collarSize, 37300)">Añadir combo</button>
+                                    <a href="<?php echo esc_url(get_option('gummy_page_url', '#')); ?>" class="bundle-gummy-link" target="_blank">Ver Gummy →</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="inventory-notice">
+                        <span class="inventory-icon">⚠️</span>
+                        <div>
+                            <strong>Sujeto a disponibilidad de inventario.</strong><br>
+                            <span>Los productos están disponibles según stock. Te contactaremos si hay cambios en tu pedido.</span>
+                        </div>
+                    </div>
                 </div>
-                
+
             </div>
         </div>
         

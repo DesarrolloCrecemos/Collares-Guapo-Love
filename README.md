@@ -1,105 +1,72 @@
-# 🐾 Configurador de Collar Personalizado
+# Configurador de Collar — Plugin WordPress/WooCommerce
 
-Plugin de WordPress para crear collares personalizados con 3 pasos: Tamaño → Color → Charms
+Plugin para configurar collares de mascotas con charms personalizables (letras, números, emojis, glitter), integrado con WooCommerce.
 
----
+## Archivos del plugin
 
-## 🚀 Instalación (3 pasos)
+| Archivo | Función |
+|---|---|
+| `collar-configurator.php` | Plugin principal. Toda la lógica PHP. |
+| `configurator-template-wawas.php` | Plantilla HTML del configurador (frontend). |
+| `collar-configurator-wawas.css` | Estilos del configurador. |
+| `collar-configurator-wawas.js` | Lógica del configurador (selección, render). |
+| `whatsapp-logo-*.webp` | Icono del botón flotante de WhatsApp. |
+| `assets/` | Imágenes (emojis, logos, texturas, charms glitter generados). |
 
-### 1. Subir archivos
-Sube la carpeta completa a: `/wp-content/plugins/collar-configurator/`
+## Shortcodes
 
-### 2. Activar plugin
-**Plugins > Plugins instalados** → Activar "Configurador de Collar"
+- `[collar_configurador]` — configurador completo. Úsalo en la página `/personalizar-collar/`.
+- `[collar_configurador show_title="false"]` — sin título.
+- `[collar_gummy]` — página del Collar Gummy (producto fijo con tallas).
 
-### 3. Usar shortcode
-Pega donde quieras el configurador: `[collar_configurador]`
+## Páginas del admin
 
----
+- **Collares → Ajustes**: IDs de productos, URLs, WhatsApp, texturas/fuentes, generador glitter.
+- **Collares → Pedidos**: lista de pedidos del configurador con filtros, búsqueda, mini-preview de charms, detalle visual completo, export CSV.
 
-## 📁 Estructura Requerida
+## Lógica de precios (autoritativa en PHP)
 
-```
-collar-configurator/
-├── collar-configurator.php          ← Plugin principal
-├── configurator-template.php        ← Template HTML
-├── collar-configurator-new.css      ← Estilos
-├── collar-configurator-new.js       ← JavaScript
-├── collar-configurator-new.html     ← Demo standalone (opcional)
-└── assets/emojis/                   ← Imágenes de emojis (REQUERIDO)
-    ├── lila/, azul/, verde/
-    ├── amarillo/, naranja/, rojo/
-    └── rosa/, blanco/
-```
+Las constantes viven en `CollarConfiguratorAJAX` (collar-configurator.php). **Si cambias precios en el JS, sincroniza acá:**
 
----
-
-## 🎨 Uso con Elementor
-
-1. Arrastra widget **"Shortcode"**
-2. Pega: `[collar_configurador]`
-3. ¡Listo! ✅
-
-### Layout de 2 columnas:
-- **Izquierda:** Galería de imágenes (Elementor)
-- **Derecha:** Shortcode del configurador
-
----
-
-## ⚙️ Personalización
-
-```
-[collar_configurador]                                 ← Con título
-[collar_configurador show_title="false"]             ← Sin título
-[collar_configurador title="Crea tu Collar Único"]   ← Título custom
+```php
+const BASE_PRICES = array('XS' => 69800, 'S/M/L/XL' => 75800);
+const EXTRA_CHARM_PRICE = array('XS' => 3000, otros => 4000);
+const BASE_CHARMS_INCLUDED = 6;
+const BUNDLE_GUMMY_PRICE = array('XS' => 38000, otros => 37300);
 ```
 
----
+El precio que envía el cliente vía AJAX se **ignora**. Se recalcula server-side a partir de `collar_size` + `charms_count`.
 
-## 🛒 WooCommerce (Opcional)
+## Tabla personalizada en BD
 
-1. Crea producto "Collar Personalizado"
-2. Copia el ID del producto
-3. **Ajustes > Configurador de Collar** → Pegar ID
-4. El carrito guardará automáticamente la personalización
+`wp_collar_configurations` — guarda cada collar vendido con su configuración completa para el panel de despacho. Se sincroniza desde los pedidos de WooCommerce automáticamente (`woocommerce_checkout_order_processed` y `woocommerce_order_status_changed`).
 
----
+## Hooks principales
 
-## ❓ Problemas Comunes
+- `wp_ajax_collar_add_to_cart` / `wp_ajax_nopriv_collar_add_to_cart` — añadir collar al carrito (con validación + precio server-side).
+- `wp_ajax_gummy_add_to_cart` — añadir Collar Gummy al carrito.
+- `woocommerce_email_after_order_table` — visual de charms + método de envío en correos.
+- `woocommerce_thankyou` — página de gracias enriquecida con preview del collar.
+- `woocommerce_hidden_order_itemmeta` — oculta `_collar_charms_data` y `Configuración de Charms` de vistas públicas.
 
-### No se ve el configurador:
-- ✅ Plugin activado
-- ✅ Limpia caché (Ctrl + F5)
-- ✅ Elementor: Tools > Regenerate Files
+## Estructura de meta
 
-### No se ven emojis:
-- ✅ Carpeta `assets/emojis/` completa
-- ✅ Permisos: 755 (carpetas), 644 (archivos)
+**En el line item del pedido:**
+- `Tamaño`, `Color`, `Charms` — visibles al cliente y admin.
+- `Diseño` — resumen legible tipo `K · E · N · Y · A · 1 emoji`.
+- `_collar_charms_data` — JSON crudo de charms (oculto).
 
-### Debugging:
-- Abre consola (F12) → Busca errores
-- Network tab → Verifica que CSS/JS carguen (200 OK)
+**En el pedido (post meta):**
+- `_collar_shipping_zone` — `local` / `nacional` / `recoger`.
+- `_collar_thankyou_reached_at` — timestamp cuando el cliente llegó a la página de gracias (útil para auditar Bold / Addi).
 
----
+## Estado interno del proyecto
 
-## 🎯 Características
+- **Seguridad**: precio blindado server-side, nonces en formularios admin, CSRF protegidos, validaciones de tamaño/charms.
+- **Correos**: nuevo pedido se notifica a `linaguapo.love@gmail.com` (configurar en WC → Correos).
+- **Pendientes operativos**: instalar WP Mail SMTP para entregabilidad, configurar UpdraftPlus para backups, plugin Bold ya integrado.
 
-✅ 3 pasos intuitivos  
-✅ Vista previa en tiempo real  
-✅ 8 colores de charms  
-✅ 6 colores de collar  
-✅ Responsive (móvil/tablet/desktop)  
-✅ Compatible con Elementor  
-✅ Integración WooCommerce
+## Versionado
 
----
-
-## 📝 Versión 1.0.0
-
-**Archivos esenciales:** Solo necesitas los 4 archivos principales + carpeta assets/emojis/  
-**Uso:** Shortcode simple `[collar_configurador]`  
-**Soporte:** Compatible con WordPress 5.0+ y WooCommerce 3.0+
-
----
-
-¿Dudas? Abre F12 en tu navegador y revisa la consola para errores específicos.
+- **1.0.0** — Versión inicial.
+- **1.5.0** — Seguridad blindada, panel Pedidos enriquecido, correos visuales, página de gracias custom.
