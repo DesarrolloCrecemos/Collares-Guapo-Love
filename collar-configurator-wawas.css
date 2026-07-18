@@ -677,75 +677,131 @@
 
 .gummy-preview-card {
     display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-top: 14px;
-    padding: 12px 14px;
-    background: white;
-    border: 1.5px solid #F3B5D2;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    max-width: 260px;
+    margin: 16px auto 0;
+    padding: 0;
+    background: linear-gradient(160deg, #fff5fa 0%, #ffeaf5 100%);
+    border: 2px solid #F3B5D2;
     border-radius: 14px;
     text-decoration: none;
     color: inherit;
     position: relative;
     overflow: hidden;
-    transition: box-shadow .2s, border-color .2s;
-    box-shadow: 0 2px 8px rgba(243,181,210,0.18);
+    transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+    box-shadow: 0 4px 14px rgba(201, 2, 120, 0.12);
 }
 .gummy-preview-card:hover {
     border-color: #EB0296;
-    box-shadow: 0 4px 16px rgba(235,2,150,0.13);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(235, 2, 150, 0.22);
+}
+.gummy-preview-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 55%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+    transform: skewX(-20deg);
+    animation: gummyShine 4s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 2;
+}
+@keyframes gummyShine {
+    0%   { left: -55%; }
+    55%  { left: 130%; }
+    100% { left: 130%; }
 }
 .gummy-preview-badge {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    background: #FDA303;
+    top: 8px;
+    right: 8px;
+    background: linear-gradient(135deg, #FDA303, #f59100);
     color: #111;
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 13px;
-    letter-spacing: 0.5px;
-    padding: 2px 9px;
-    border-radius: 20px;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    padding: 3px 9px;
+    border-radius: 999px;
     white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(253, 163, 3, 0.45);
+    z-index: 3;
+    animation: gummyBadgePulse 2.4s ease-in-out infinite;
+}
+@keyframes gummyBadgePulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.06); }
 }
 .gummy-preview-img {
-    width: 76px;
-    height: 76px;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    height: auto;
     object-fit: cover;
-    border-radius: 10px;
+    object-position: center;
+    border-radius: 0;
     flex-shrink: 0;
-    border: 1px solid #f0f0f0;
+    border: none;
+    display: block;
+    image-rendering: -webkit-optimize-contrast;
 }
 .gummy-preview-info {
     flex: 1;
     min-width: 0;
+    padding: 12px 14px 14px;
+    text-align: center;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
 }
 .gummy-preview-tag {
-    font-size: 11px;
-    color: #9ca3af;
-    margin: 0 0 2px;
+    font-size: 9px;
+    color: #c90278;
+    margin: 0;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.8px;
+    font-weight: 700;
 }
 .gummy-preview-name {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: normal;
     color: #111827;
-    letter-spacing: 0.5px;
-    margin: 0 0 2px;
+    letter-spacing: 0.6px;
+    margin: 0;
+    line-height: 1.1;
 }
 .gummy-preview-price {
-    font-size: 14px;
+    font-size: 13px;
     color: #EB0296;
-    font-weight: 600;
+    font-weight: 800;
     margin: 0 0 4px;
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 0.5px;
 }
 .gummy-preview-cta {
-    font-size: 12px;
-    color: #c90278;
-    font-weight: 600;
-    margin: 0;
+    display: inline-block;
+    align-self: center;
+    font-size: 11px;
+    color: #fff;
+    font-weight: 700;
+    margin: 4px 0 0;
+    background: linear-gradient(135deg, #c90278, #FF1493);
+    padding: 6px 16px;
+    border-radius: 999px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    box-shadow: 0 3px 9px rgba(201, 2, 120, 0.28);
+    transition: transform .2s, box-shadow .2s;
+}
+.gummy-preview-card:hover .gummy-preview-cta {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(201, 2, 120, 0.45);
 }
 
 /* Marcas autorizadas */
@@ -1441,21 +1497,36 @@
     .gummy-preview-card.gummy-preview-mobile  { display: flex; }
 
     .gummy-preview-card {
+        flex-direction: row;
+        align-items: center;
         gap: 12px;
         padding: 10px 12px;
         margin-top: 0;
         margin-bottom: 14px;
+        background: #fff;
     }
     .gummy-preview-img {
-        width: 64px;
-        height: 64px;
+        width: 72px;
+        height: 72px;
+        border-radius: 10px;
+    }
+    .gummy-preview-info {
+        padding: 0;
+        text-align: left;
+        background: transparent;
     }
     .gummy-preview-name { font-size: 18px; }
     .gummy-preview-tag {
         text-align: left;
     }
-    .gummy-preview-info {
-        padding-right: 0;
+    .gummy-preview-price { font-size: 14px; margin-bottom: 4px; }
+    .gummy-preview-cta {
+        font-size: 11px;
+        padding: 4px 10px;
+        background: none;
+        color: #c90278;
+        box-shadow: none;
+        padding-left: 0;
     }
     .gummy-preview-badge {
         position: static;
@@ -1463,7 +1534,9 @@
         margin-bottom: 4px;
         font-size: 11px;
         padding: 2px 8px;
+        animation: none;
     }
+    .gummy-preview-card::after { display: none; }
 
     /* Logos */
     .authorized-brands {

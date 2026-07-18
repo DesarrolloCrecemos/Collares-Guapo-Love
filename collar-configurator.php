@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Configurador de Collar
- * Description: Configurador interactivo de collares personalizados con WooCommerce. Integra precios server-side, panel de pedidos con visualización de charms, correos enriquecidos y página de gracias personalizada.
- * Version: 1.5.0
+ * Description: Configurador interactivo de collares personalizados con WooCommerce. Integra precios server-side, panel de pedidos con visualización de charms, correos enriquecidos, garantía de notificación de pedidos al admin y página de gracias personalizada.
+ * Version: 1.6.1
  * Author: Guapolove
  * Requires at least: 5.0
  * Requires PHP: 7.2
@@ -77,42 +77,6 @@ function collar_configurador_shortcode($atts) {
 }
 add_shortcode('collar_configurador', 'collar_configurador_shortcode');
 
-// Ocultar menú de navegación en la página del configurador, conservando solo el carrito
-add_action('wp_head', function() {
-    if (!is_page('personalizar-collar')) return;
-    ?>
-    <style>
-    /* Ocultar items del menú de navegación */
-    .main-navigation .menu-item:not([class*="cart"]),
-    .primary-navigation .menu-item:not([class*="cart"]),
-    .site-navigation .menu-item:not([class*="cart"]),
-    header nav > ul > li:not([class*="cart"]),
-    #site-navigation .menu-item:not([class*="cart"]),
-    .ast-main-header-wrap .main-navigation .menu-item:not([class*="cart"]),
-    .nav-menu > li:not([class*="cart"]) {
-        display: none !important;
-    }
-    /* Ocultar botón de hamburguesa en móvil */
-    .menu-toggle,
-    .ast-mobile-menu-trigger,
-    .navbar-toggle,
-    button.menu-toggle,
-    .elementor-menu-toggle {
-        display: none !important;
-    }
-    </style>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('nav li, .nav-menu li, .menu li').forEach(function(li) {
-            var hasCart = li.className.indexOf('cart') !== -1 ||
-                          li.querySelector('[class*="cart"]') !== null;
-            if (!hasCart) li.style.display = 'none';
-        });
-    });
-    </script>
-    <?php
-});
-
 class CollarConfiguratorAJAX {
 
     // Precios autoritativos del servidor. NO confiar en valores del cliente.
@@ -136,7 +100,21 @@ class CollarConfiguratorAJAX {
 
     const BASE_CHARMS_INCLUDED = 6;
     const MIN_CHARMS = 6;
-    const MAX_CHARMS = 20;
+    const MAX_CHARMS = 9; // Tope general (fallback)
+
+    // Máximo de charms por talla (por espacio físico en el collar).
+    // Por ahora 9 para todas; ajustar cuando confirmen el máximo real de cada talla.
+    const MAX_CHARMS_BY_SIZE = array(
+        'XS' => 9,
+        'S'  => 9,
+        'M'  => 9,
+        'L'  => 9,
+        'XL' => 9,
+    );
+
+    // Colores de collar con stock por talla. Solo XS está restringido (stock limitado).
+    // Las demás tallas admiten todos los colores, por eso no se listan aquí.
+    const XS_ALLOWED_COLORS = array('Rosa', 'Rojo', 'Azul');
 
     // Precio del Gummy dentro del bundle, por tamaño del collar (10% off).
     const BUNDLE_GUMMY_PRICE = array(
@@ -150,9 +128,13 @@ class CollarConfiguratorAJAX {
     /**
      * Calcular precio del collar en servidor. Único cálculo confiable.
      */
+    private function max_charms_for_size($size) {
+        return isset(self::MAX_CHARMS_BY_SIZE[$size]) ? self::MAX_CHARMS_BY_SIZE[$size] : self::MAX_CHARMS;
+    }
+
     private function calculate_collar_price($size, $charms_count) {
         if (!in_array($size, self::ALLOWED_SIZES, true)) return 0;
-        if ($charms_count < self::MIN_CHARMS || $charms_count > self::MAX_CHARMS) return 0;
+        if ($charms_count < self::MIN_CHARMS || $charms_count > $this->max_charms_for_size($size)) return 0;
 
         $base   = self::BASE_PRICES[$size];
         $extras = max(0, $charms_count - self::BASE_CHARMS_INCLUDED);
@@ -188,6 +170,11 @@ class CollarConfiguratorAJAX {
         add_action('wp_footer',                                   array($this, 'render_whatsapp_floating_button'), 99);
         add_action('woocommerce_checkout_process',                array($this, 'validate_shipping_address'));
         add_action('woocommerce_checkout_update_order_meta',      array($this, 'save_shipping_address_to_order'), 10, 2);
+
+        // Calidad de datos en checkout: mejorar campo de celular, agregar confirmación
+        // y validar formato (celular colombiano: 10 dígitos que empiezan por 3).
+        add_filter('woocommerce_checkout_fields', array($this, 'enhance_checkout_fields'), 20);
+        add_action('woocommerce_checkout_process', array($this, 'validate_billing_phone'));
         
         // Guardar configuración en tabla personalizada al completar orden
         add_action('woocommerce_checkout_order_processed', array($this, 'save_collar_to_db'), 10, 3);
@@ -213,6 +200,11 @@ class CollarConfiguratorAJAX {
         add_action('wp_ajax_gummy_add_to_cart',        array($this, 'gummy_ajax_add_to_cart'));
         add_action('wp_ajax_nopriv_gummy_add_to_cart', array($this, 'gummy_ajax_add_to_cart'));
 
+        // Entregar un nonce fresco (admin-ajax NO se cachea). Resuelve el 403 cuando la
+        // página del configurador queda cacheada y el nonce impreso expira.
+        add_action('wp_ajax_collar_refresh_nonce',        array($this, 'ajax_refresh_nonce'));
+        add_action('wp_ajax_nopriv_collar_refresh_nonce', array($this, 'ajax_refresh_nonce'));
+
         // Ocultar metas técnicos del display en pedidos (admin, emails, gracias)
         add_filter('woocommerce_hidden_order_itemmeta', array($this, 'hide_internal_order_meta'));
         // Inyectar "Diseño" legible al vuelo para pedidos viejos que no lo tengan
@@ -221,6 +213,98 @@ class CollarConfiguratorAJAX {
         add_action('woocommerce_email_after_order_table', array($this, 'render_collar_visual_in_email'), 10, 4);
         // Página de gracias personalizada (preview + tracking de llegada después de Bold/Addi)
         add_action('woocommerce_thankyou', array($this, 'render_thankyou_collar_preview'), 5, 1);
+
+        // Garantía de notificación al admin para TODOS los pedidos pagados (Bold, Addi,
+        // etc.). El correo nativo "Nuevo pedido" no se completa en el request del webhook
+        // de Bold (verificado en producción: ningún pedido real tiene el marcador
+        // _new_order_email_sent que WooCommerce graba tras un envío exitoso, aunque el
+        // mismo envío funciona perfecto disparado por CLI). Este respaldo reintenta en
+        // tres momentos: cambio de estado, página de gracias (request aparte) y un
+        // vigilante horario por cron. No duplica: trigger() de WC no reenvía si
+        // _new_order_email_sent ya está marcado.
+        add_action('woocommerce_order_status_changed', array($this, 'maybe_send_admin_email_on_status'), 20, 4);
+        add_action('woocommerce_thankyou',             array($this, 'maybe_send_admin_email_on_thankyou'), 20, 1);
+        add_action('init',                             array($this, 'schedule_email_watchdog'));
+        add_action('collar_admin_email_watchdog',      array($this, 'run_email_watchdog'));
+        register_deactivation_hook(__FILE__, array($this, 'unschedule_email_watchdog'));
+    }
+
+    /**
+     * Envía el correo "Nuevo pedido" al admin UNA sola vez por pedido pagado, para
+     * cualquier método de pago. WC_Email_New_Order::trigger() ya evita duplicados:
+     * ignora la llamada si el pedido tiene _new_order_email_sent (que WooCommerce
+     * marca solo tras un envío exitoso). Si el correo nativo funcionó, esto no hace nada.
+     */
+    private function send_admin_new_order_email_once($order) {
+        if (!$order) return;
+
+        // Solo estados que implican pago confirmado (evita falsos positivos).
+        if (!in_array($order->get_status(), array('processing', 'on-hold', 'completed'), true)) return;
+
+        // Ya enviado (por WooCommerce nativo, por este respaldo o por el botón manual).
+        if ($order->get_meta('_collar_admin_email_sent') === 'yes') return;
+        if ($order->get_meta('_new_order_email_sent')) return;
+
+        if (!function_exists('WC')) return;
+        $mailer = WC()->mailer();
+        if (!$mailer || empty($mailer->emails['WC_Email_New_Order'])) return;
+
+        $mailer->emails['WC_Email_New_Order']->trigger($order->get_id(), $order);
+
+        // trigger() marca _new_order_email_sent solo si wp_mail() tuvo éxito. Si no quedó
+        // marcado no grabamos nuestro meta, para que la página de gracias o el vigilante
+        // horario lo reintenten en un request nuevo.
+        $fresh = wc_get_order($order->get_id());
+        if ($fresh && $fresh->get_meta('_new_order_email_sent')) {
+            $fresh->update_meta_data('_collar_admin_email_sent', 'yes');
+            $fresh->add_order_note('📧 Correo "Nuevo pedido" enviado al admin (respaldo del configurador).');
+            $fresh->save();
+        }
+    }
+
+    public function maybe_send_admin_email_on_status($order_id, $old_status, $new_status, $order) {
+        $this->send_admin_new_order_email_once($order ?: wc_get_order($order_id));
+    }
+
+    public function maybe_send_admin_email_on_thankyou($order_id) {
+        if (!$order_id) return;
+        $this->send_admin_new_order_email_once(wc_get_order($order_id));
+    }
+
+    /**
+     * Vigilante horario: reintenta el correo de pedidos pagados recientes que sigan sin
+     * notificación (p. ej. el webhook murió y el cliente nunca volvió a la página de
+     * gracias). Solo considera pedidos creados después de su primera ejecución, para no
+     * bombardear con pedidos históricos.
+     */
+    public function schedule_email_watchdog() {
+        if (!wp_next_scheduled('collar_admin_email_watchdog')) {
+            wp_schedule_event(time() + 300, 'hourly', 'collar_admin_email_watchdog');
+        }
+    }
+
+    public function unschedule_email_watchdog() {
+        wp_clear_scheduled_hook('collar_admin_email_watchdog');
+    }
+
+    public function run_email_watchdog() {
+        if (!function_exists('wc_get_orders')) return;
+
+        $since = (int) get_option('collar_email_watchdog_since', 0);
+        if (!$since) {
+            // Primera ejecución: solo fija el punto de partida.
+            update_option('collar_email_watchdog_since', time(), false);
+            return;
+        }
+
+        $orders = wc_get_orders(array(
+            'status'       => array('processing', 'on-hold', 'completed'),
+            'date_created' => '>' . max($since, time() - 7 * DAY_IN_SECONDS),
+            'limit'        => 25,
+        ));
+        foreach ($orders as $order) {
+            $this->send_admin_new_order_email_once($order);
+        }
     }
 
     /**
@@ -240,7 +324,7 @@ class CollarConfiguratorAJAX {
         }
 
         $assets_url = plugin_dir_url(__FILE__) . 'assets/';
-        $zone = $order->get_meta('_collar_shipping_zone');
+        $zone = $this->get_order_shipping_zone($order);
         $zone_labels = array(
             'local'    => array('label' => 'Bogotá, Chía y Cota', 'eta' => '4–5 días hábiles'),
             'nacional' => array('label' => 'Nivel Nacional',       'eta' => '4–5 días hábiles'),
@@ -395,7 +479,7 @@ class CollarConfiguratorAJAX {
         }
 
         // Método de envío
-        $zone = get_post_meta($order->get_id(), '_collar_shipping_zone', true);
+        $zone = $this->get_order_shipping_zone($order);
         if ($zone) {
             $zone_labels = array(
                 'local'    => 'Envío Deprisa · Bogotá, Chía y Cota ($8.900)',
@@ -454,6 +538,20 @@ class CollarConfiguratorAJAX {
     
     public function init() {
         // Registro de funciones necesarias
+    }
+
+    /**
+     * Zona de envío del pedido. Lee el meta de la orden (compatible con HPOS) y cae al
+     * postmeta legacy para pedidos creados cuando se guardaba con update_post_meta
+     * (con HPOS activo ese dato quedaba invisible para $order->get_meta()).
+     */
+    private function get_order_shipping_zone($order) {
+        if (!$order) return '';
+        $zone = $order->get_meta('_collar_shipping_zone');
+        if (!$zone) {
+            $zone = get_post_meta($order->get_id(), '_collar_shipping_zone', true);
+        }
+        return $zone;
     }
 
     /**
@@ -785,6 +883,67 @@ class CollarConfiguratorAJAX {
     }
 
     /**
+     * Mejorar campos del checkout: nombre/apellido obligatorios, celular con placeholder
+     * y un campo de confirmación de celular justo después del original.
+     */
+    public function enhance_checkout_fields($fields) {
+        if (isset($fields['billing']['billing_first_name'])) {
+            $fields['billing']['billing_first_name']['required'] = true;
+        }
+        if (isset($fields['billing']['billing_last_name'])) {
+            $fields['billing']['billing_last_name']['required'] = true;
+        }
+
+        if (isset($fields['billing']['billing_phone'])) {
+            $fields['billing']['billing_phone']['label']       = 'Celular';
+            $fields['billing']['billing_phone']['placeholder'] = 'Ej: 3001234567';
+            $fields['billing']['billing_phone']['required']    = true;
+
+            $phone_priority = isset($fields['billing']['billing_phone']['priority'])
+                ? (int) $fields['billing']['billing_phone']['priority']
+                : 100;
+
+            // Campo de confirmación justo después del celular.
+            $fields['billing']['billing_phone_confirm'] = array(
+                'label'       => 'Confirma tu celular',
+                'placeholder' => 'Vuelve a escribir tu celular',
+                'required'    => true,
+                'type'        => 'tel',
+                'priority'    => $phone_priority + 1,
+                'class'       => array('form-row-wide'),
+            );
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Validar el celular en el checkout: formato colombiano (10 dígitos, empieza por 3)
+     * y que coincida con el campo de confirmación. Evita envíos fallidos por datos erróneos.
+     */
+    public function validate_billing_phone() {
+        $phone   = isset($_POST['billing_phone']) ? trim(wp_unslash($_POST['billing_phone'])) : '';
+        $confirm = isset($_POST['billing_phone_confirm']) ? trim(wp_unslash($_POST['billing_phone_confirm'])) : '';
+
+        $phone_digits   = preg_replace('/\D+/', '', $phone);
+        $confirm_digits = preg_replace('/\D+/', '', $confirm);
+
+        // Formato celular colombiano: exactamente 10 dígitos y empieza por 3.
+        if ($phone_digits !== '' && (strlen($phone_digits) !== 10 || $phone_digits[0] !== '3')) {
+            wc_add_notice('El número de celular debe tener 10 dígitos y empezar por 3 (ej: 3001234567).', 'error');
+        }
+
+        // Confirmación de celular.
+        if ($phone_digits !== '') {
+            if ($confirm_digits === '') {
+                wc_add_notice('Por favor confirma tu número de celular.', 'error');
+            } elseif ($phone_digits !== $confirm_digits) {
+                wc_add_notice('Los números de celular no coinciden. Verifícalos por favor.', 'error');
+            }
+        }
+    }
+
+    /**
      * Validar que los campos de dirección estén completos antes de procesar el pago.
      */
     public function validate_shipping_address() {
@@ -812,25 +971,29 @@ class CollarConfiguratorAJAX {
      * Guardar la dirección de envío personalizada en la orden de WooCommerce.
      */
     public function save_shipping_address_to_order($order_id, $data) {
-        $zone = WC()->session ? WC()->session->get('collar_shipping_zone', '') : '';
-        if (!empty($zone)) {
-            update_post_meta($order_id, '_collar_shipping_zone', $zone);
-        }
-        if (!in_array($zone, array('local', 'nacional'), true)) return;
-
-        $address = sanitize_text_field($_POST['collar_shipping_address'] ?? '');
-        $city    = sanitize_text_field($_POST['collar_shipping_city']    ?? '');
-        $state   = sanitize_text_field($_POST['collar_shipping_state']   ?? '');
-        $barrio  = sanitize_text_field($_POST['collar_shipping_barrio']  ?? '');
-
+        $zone  = WC()->session ? WC()->session->get('collar_shipping_zone', '') : '';
         $order = wc_get_order($order_id);
         if (!$order) return;
 
-        $order->set_shipping_address_1($address);
-        $order->set_shipping_address_2($barrio);
-        $order->set_shipping_city($city);
-        $order->set_shipping_state($state);
-        $order->set_shipping_country('CO');
+        if (!empty($zone)) {
+            // Meta de la orden, no update_post_meta: con HPOS activo el postmeta queda
+            // invisible para $order->get_meta() (página de gracias, correos, panel).
+            $order->update_meta_data('_collar_shipping_zone', $zone);
+        }
+
+        if (in_array($zone, array('local', 'nacional'), true)) {
+            $address = sanitize_text_field($_POST['collar_shipping_address'] ?? '');
+            $city    = sanitize_text_field($_POST['collar_shipping_city']    ?? '');
+            $state   = sanitize_text_field($_POST['collar_shipping_state']   ?? '');
+            $barrio  = sanitize_text_field($_POST['collar_shipping_barrio']  ?? '');
+
+            $order->set_shipping_address_1($address);
+            $order->set_shipping_address_2($barrio);
+            $order->set_shipping_city($city);
+            $order->set_shipping_state($state);
+            $order->set_shipping_country('CO');
+        }
+
         $order->save();
     }
 
@@ -924,8 +1087,23 @@ class CollarConfiguratorAJAX {
             return;
         }
 
+        // Solo se puede configurar EL collar. Sin esta comprobación, el precio del collar
+        // (calculado server-side) se impondría a cualquier producto que el cliente indique
+        // en product_id, permitiendo subpagar productos caros o inyectar productos ajenos.
+        $collar_product_id = (int) get_option('collar_product_id', 0);
+        if (!$collar_product_id || $product_id !== $collar_product_id) {
+            wp_send_json_error(array('message' => 'Producto no válido para el configurador.'));
+            return;
+        }
+
         if (!in_array($collar_size, self::ALLOWED_SIZES, true)) {
             wp_send_json_error(array('message' => 'Tamaño no válido.'));
+            return;
+        }
+
+        // XS tiene stock limitado de colores de collar (anti-manipulación).
+        if ($collar_size === 'XS' && !in_array($collar_color, self::XS_ALLOWED_COLORS, true)) {
+            wp_send_json_error(array('message' => 'Ese color no está disponible en talla XS. Colores disponibles: Rosa, Rojo y Azul.'));
             return;
         }
 
@@ -934,8 +1112,9 @@ class CollarConfiguratorAJAX {
             return;
         }
 
-        if ($charms_count > self::MAX_CHARMS) {
-            wp_send_json_error(array('message' => 'Máximo ' . self::MAX_CHARMS . ' charms permitidos'));
+        $max_for_size = $this->max_charms_for_size($collar_size);
+        if ($charms_count > $max_for_size) {
+            wp_send_json_error(array('message' => 'Máximo ' . $max_for_size . ' charms permitidos para talla ' . $collar_size . '.'));
             return;
         }
 
@@ -1140,24 +1319,34 @@ class CollarConfiguratorAJAX {
         if (is_admin() && !defined('DOING_AJAX')) {
             return;
         }
-        
+
+        // Defensa en profundidad: solo se repreciar los productos esperados. Aunque los
+        // handlers AJAX ya validan el product_id, aquí volvemos a exigir que el ítem sea
+        // realmente el collar/gummy configurado antes de sobreescribir su precio.
+        $collar_product_id = (int) get_option('collar_product_id', 0);
+        $gummy_product_id  = (int) get_option('gummy_product_id', 0);
+
         // Determinar si hay algún collar personalizado en el carrito
         $has_collar_in_cart = false;
         foreach ($cart->get_cart() as $item) {
-            if (isset($item['collar_configuration'])) {
+            if (isset($item['collar_configuration']) && $collar_product_id && (int) $item['product_id'] === $collar_product_id) {
                 $has_collar_in_cart = true;
                 break;
             }
         }
 
         foreach ($cart->get_cart() as $cart_item_key => $cart_item) {
-            if (isset($cart_item['collar_configuration']['custom_price'])) {
+            $item_product_id = (int) $cart_item['product_id'];
+
+            if (isset($cart_item['collar_configuration']['custom_price'])
+                && $collar_product_id && $item_product_id === $collar_product_id) {
                 $custom_price = floatval($cart_item['collar_configuration']['custom_price']);
                 if ($custom_price > 0) {
                     $cart_item['data']->set_price($custom_price);
                 }
             }
-            if (isset($cart_item['gummy_bundle_price']) && $cart_item['gummy_bundle_price'] > 0) {
+            if (isset($cart_item['gummy_bundle_price']) && $cart_item['gummy_bundle_price'] > 0
+                && $gummy_product_id && $item_product_id === $gummy_product_id) {
                 if ($has_collar_in_cart) {
                     // Collar presente: aplicar precio bundle
                     $cart_item['data']->set_price(floatval($cart_item['gummy_bundle_price']));
@@ -1559,6 +1748,34 @@ class CollarConfiguratorAJAX {
                     : '<div class="notice notice-error"><p>No se pudo eliminar el registro.</p></div>';
             }
         }
+
+        // Reenviar manualmente el correo "Nuevo pedido" a las cuentas del administrador
+        // (las configuradas en WooCommerce → Ajustes → Correos → Nuevo pedido). Es el
+        // mismo correo completo, con visual de charms, envío y total.
+        $resend_notice = '';
+        if (isset($_POST['collar_resend_order_id']) && current_user_can('manage_options')) {
+            check_admin_referer('collar_resend_email', 'collar_resend_nonce');
+            $resend_oid   = intval($_POST['collar_resend_order_id']);
+            $resend_order = $resend_oid > 0 ? wc_get_order($resend_oid) : null;
+            if ($resend_order && function_exists('WC')) {
+                $mailer = WC()->mailer();
+                if ($mailer && !empty($mailer->emails['WC_Email_New_Order'])) {
+                    // Sin este filtro, desde WC 10 trigger() ignora la llamada si el pedido
+                    // ya tiene _new_order_email_sent (mostraría éxito sin enviar nada).
+                    add_filter('woocommerce_new_order_email_allows_resend', '__return_true');
+                    $mailer->emails['WC_Email_New_Order']->trigger($resend_oid, $resend_order);
+                    remove_filter('woocommerce_new_order_email_allows_resend', '__return_true');
+                    $resend_order->update_meta_data('_collar_admin_email_sent', 'yes');
+                    $resend_order->add_order_note('📧 Correo "Nuevo pedido" reenviado manualmente desde el panel de collares.');
+                    $resend_order->save();
+                    $resend_notice = '<div class="notice notice-success is-dismissible"><p>📧 Correo del pedido #' . $resend_oid . ' reenviado a las cuentas del administrador.</p></div>';
+                } else {
+                    $resend_notice = '<div class="notice notice-error"><p>No se pudo enviar el correo (servicio de correo no disponible).</p></div>';
+                }
+            } else {
+                $resend_notice = '<div class="notice notice-error"><p>Pedido no encontrado.</p></div>';
+            }
+        }
         
         // Sincronizar datos desde WooCommerce si se pide o si la tabla está vacía
         $total_in_db = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
@@ -1667,7 +1884,8 @@ class CollarConfiguratorAJAX {
             </h1>
 
             <?php echo $delete_notice; ?>
-            
+            <?php echo $resend_notice; ?>
+
             <!-- Dashboard de estadísticas -->
             <div class="collar-stats-dashboard">
                 <div class="stat-card">
@@ -1769,6 +1987,7 @@ class CollarConfiguratorAJAX {
                             <th width="70">Pedido</th>
                             <th width="110">Fecha</th>
                             <th width="90">Estado</th>
+                            <th width="90">Pago</th>
                             <th>Cliente</th>
                             <th width="60">Tamaño</th>
                             <th width="110">Color del collar</th>
@@ -1806,6 +2025,11 @@ class CollarConfiguratorAJAX {
                             $swatch_hex = $this->collar_color_hex($row->collar_color);
                             // Link WhatsApp
                             $wa_url = $this->whatsapp_url_from_phone($row->customer_phone);
+                            // Orden de WooCommerce (para pago, link de edición HPOS-safe, etc.)
+                            $row_order      = wc_get_order($row->order_id);
+                            $order_edit_url = $row_order
+                                ? $row_order->get_edit_order_url()
+                                : admin_url('post.php?post=' . $row->order_id . '&action=edit');
                             // Mini-charms preview
                             $mini_charms = '';
                             $charms_for_mini = json_decode(wp_unslash($row->charms_data), true);
@@ -1834,7 +2058,7 @@ class CollarConfiguratorAJAX {
                             <tr>
                                 <td>
                                     <strong>
-                                        <a href="<?php echo admin_url('post.php?post=' . $row->order_id . '&action=edit'); ?>" target="_blank">
+                                        <a href="<?php echo esc_url($order_edit_url); ?>" target="_blank">
                                             #<?php echo $row->order_id; ?>
                                         </a>
                                     </strong>
@@ -1848,6 +2072,27 @@ class CollarConfiguratorAJAX {
                                     <span class="order-status status-<?php echo esc_attr($row->order_status); ?>">
                                         <?php echo esc_html(ucfirst($row->order_status)); ?>
                                     </span>
+                                </td>
+                                <td>
+                                    <?php
+                                    $pay_title = $row_order ? $row_order->get_payment_method_title() : '';
+                                    $pay_slug  = $row_order ? $row_order->get_payment_method() : '';
+                                    $pay_color = '#6b7280';
+                                    if (stripos($pay_slug, 'addi') !== false || stripos($pay_title, 'addi') !== false) {
+                                        $pay_color = '#7c3aed';
+                                    } elseif (stripos($pay_slug, 'bold') !== false || stripos($pay_title, 'bold') !== false) {
+                                        $pay_color = '#0ea5e9';
+                                    } elseif (stripos($pay_slug, 'cod') !== false) {
+                                        $pay_color = '#16a34a';
+                                    }
+                                    ?>
+                                    <?php if ($pay_title): ?>
+                                        <span style="display:inline-block;padding:3px 8px;background:<?php echo esc_attr($pay_color); ?>;color:#fff;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;">
+                                            💳 <?php echo esc_html($pay_title); ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <small style="color:#9ca3af;">—</small>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <strong><?php echo esc_html($row->customer_name); ?></strong><br>
@@ -1884,6 +2129,13 @@ class CollarConfiguratorAJAX {
                                     <button type="button" class="button button-small" onclick="toggleDetails('d<?php echo $row->id; ?>')">
                                         📋 Detalles
                                     </button>
+                                    <?php if (in_array($row->order_status, array('processing', 'on-hold', 'completed'), true)): ?>
+                                    <form method="post" style="display:inline-block;margin-top:4px;" onsubmit="return confirm('¿Reenviar el correo de este pedido a la cuenta del administrador (Lina)?\n\nIncluye el detalle completo del collar (charms, tamaño, color, envío). No se envía nada al cliente.');">
+                                        <?php wp_nonce_field('collar_resend_email', 'collar_resend_nonce'); ?>
+                                        <input type="hidden" name="collar_resend_order_id" value="<?php echo (int) $row->order_id; ?>">
+                                        <button type="submit" class="button button-small" style="color:#1d6fa5;border-color:#9cc3e0;">📧 Reenviar correo</button>
+                                    </form>
+                                    <?php endif; ?>
                                     <form method="post" style="display:inline-block;margin-top:4px;" onsubmit="return confirm('¿Eliminar este registro del panel?\n\nLa orden de WooCommerce NO se elimina, solo desaparece de esta lista. Si quieres borrar la orden completa, hazlo desde WooCommerce → Pedidos.');">
                                         <?php wp_nonce_field('collar_delete_row', 'collar_delete_nonce'); ?>
                                         <input type="hidden" name="collar_delete_id" value="<?php echo (int) $row->id; ?>">
@@ -1892,11 +2144,11 @@ class CollarConfiguratorAJAX {
                                 </td>
                             </tr>
                             <tr id="d<?php echo $row->id; ?>" style="display: none;">
-                                <td colspan="10" style="background: #f9f9f9; padding: 20px;">
+                                <td colspan="11" style="background: #f9f9f9; padding: 20px;">
                                     <?php
                                     // Cargar la orden de WooCommerce para datos de envío/pago
                                     $wc_order   = wc_get_order($row->order_id);
-                                    $ship_zone  = get_post_meta($row->order_id, '_collar_shipping_zone', true);
+                                    $ship_zone  = $this->get_order_shipping_zone($wc_order);
                                     $zone_label = array(
                                         'local'    => 'Bogotá, Chía y Cota ($8.900)',
                                         'nacional' => 'Nivel Nacional ($13.900)',
@@ -1904,6 +2156,12 @@ class CollarConfiguratorAJAX {
                                     );
                                     $ship_method = isset($zone_label[$ship_zone]) ? $zone_label[$ship_zone] : '—';
                                     $payment     = $wc_order ? $wc_order->get_payment_method_title() : '—';
+                                    $payment_slug = $wc_order ? $wc_order->get_payment_method() : '';
+                                    $txn_id      = $wc_order ? $wc_order->get_transaction_id() : '';
+                                    $admin_email_sent = $wc_order && (
+                                        $wc_order->get_meta('_collar_admin_email_sent') === 'yes'
+                                        || (bool) $wc_order->get_meta('_new_order_email_sent')
+                                    );
                                     $ship_addr1  = $wc_order ? $wc_order->get_shipping_address_1() : '';
                                     $ship_addr2  = $wc_order ? $wc_order->get_shipping_address_2() : '';
                                     $ship_city   = $wc_order ? $wc_order->get_shipping_city() : '';
@@ -1943,9 +2201,28 @@ class CollarConfiguratorAJAX {
                                             <div><span class="order-status status-<?php echo esc_attr($row->order_status); ?>"><?php echo esc_html(ucfirst($row->order_status)); ?></span></div>
 
                                             <div><strong>💳 Pago:</strong></div>
-                                            <div><?php echo esc_html($payment); ?></div>
+                                            <div>
+                                                <?php echo esc_html($payment); ?>
+                                                <?php if ($payment_slug): ?>
+                                                    <small style="color:#9ca3af;">(<?php echo esc_html($payment_slug); ?>)</small>
+                                                <?php endif; ?>
+                                            </div>
                                             <div><strong>💰 Total:</strong></div>
                                             <div><strong><?php echo '$' . number_format($row->order_total, 0, ',', '.'); ?> COP</strong></div>
+
+                                            <?php if ($txn_id): ?>
+                                                <div><strong>🔖 Transacción:</strong></div>
+                                                <div style="font-family:monospace;font-size:12px;word-break:break-all;"><?php echo esc_html($txn_id); ?></div>
+                                            <?php endif; ?>
+
+                                            <div><strong>📧 Correo admin:</strong></div>
+                                            <div>
+                                                <?php if ($admin_email_sent): ?>
+                                                    <span style="color:#16a34a;font-size:12px;">✓ Enviado</span>
+                                                <?php else: ?>
+                                                    <span style="color:#dc2626;font-size:12px;">✗ Sin registro de envío — usa «Reenviar correo»</span>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
 
                                         <!-- Bloque de envío -->
@@ -2026,7 +2303,7 @@ class CollarConfiguratorAJAX {
                                         </div>
                                         
                                         <div style="margin-top: 15px; display: flex; gap: 10px;">
-                                            <a href="<?php echo admin_url('post.php?post=' . $row->order_id . '&action=edit'); ?>" class="button button-primary" target="_blank">
+                                            <a href="<?php echo esc_url($wc_order ? $wc_order->get_edit_order_url() : admin_url('post.php?post=' . $row->order_id . '&action=edit')); ?>" class="button button-primary" target="_blank">
                                                 Ver pedido en WooCommerce
                                             </a>
                                         </div>
@@ -2280,6 +2557,16 @@ class CollarConfiguratorAJAX {
     }
 
     /**
+     * Devuelve un nonce fresco para las acciones del configurador. Se llama desde el
+     * frontend cuando el nonce impreso en la página (potencialmente cacheada por
+     * LiteSpeed) ya expiró y el add-to-cart devuelve 403. admin-ajax no se cachea,
+     * por lo que este nonce siempre es válido para la sesión actual.
+     */
+    public function ajax_refresh_nonce() {
+        wp_send_json_success(array('nonce' => wp_create_nonce('collar_config_nonce')));
+    }
+
+    /**
      * Handler AJAX para agregar Collar Gummy al carrito
      */
     public function gummy_ajax_add_to_cart() {
@@ -2297,6 +2584,14 @@ class CollarConfiguratorAJAX {
 
         if (!$product_id || !wc_get_product($product_id)) {
             wp_send_json_error(array('message' => 'Producto no encontrado.'));
+            return;
+        }
+
+        // Solo se puede agregar por esta vía el Collar Gummy configurado. Evita que el
+        // precio del bundle (server-side) se aplique a un producto ajeno enviado en product_id.
+        $gummy_product_id = (int) get_option('gummy_product_id', 0);
+        if (!$gummy_product_id || $product_id !== $gummy_product_id) {
+            wp_send_json_error(array('message' => 'Producto no válido.'));
             return;
         }
 
@@ -2667,6 +2962,210 @@ function collar_gummy_shortcode() {
     return ob_get_clean();
 }
 add_shortcode('collar_gummy', 'collar_gummy_shortcode');
+
+// ============================================================
+// Shortcode "Nuestros collares" para HOME
+// Uso: [collares_home]
+//      [collares_home titulo="Nuestros productos"]
+// Muestra los 2 productos (Configurador y Gummy) en cards con imagen,
+// título, descripción y botón que lleva a cada página de producto.
+// ============================================================
+function collares_home_shortcode($atts) {
+    $atts = shortcode_atts(array(
+        'titulo' => 'Nuestros collares',
+    ), $atts);
+
+    $collar_id   = (int) get_option('collar_product_id', 0);
+    $gummy_id    = (int) get_option('gummy_product_id', 0);
+    $collar_url  = get_option('collar_configurator_page_url', '');
+    $gummy_url   = get_option('gummy_page_url', '');
+
+    // Imagen + precio del configurador
+    $collar_img = $collar_id ? get_the_post_thumbnail_url($collar_id, 'large') : '';
+    if (!$collar_img) {
+        $collar_img = 'https://guapolove.com/wp-content/uploads/2026/03/instories_EAEB202C-DC9C-45ED-A08C-42EC52E5FEAF.png';
+    }
+    // Imagen del Gummy
+    $gummy_img = '';
+    if ($gummy_id) {
+        $gummy_img_id = get_post_thumbnail_id($gummy_id);
+        if ($gummy_img_id) {
+            $gummy_img = wp_get_attachment_image_url($gummy_img_id, 'large');
+        }
+    }
+
+    ob_start();
+    ?>
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+    .collares-home-wrap {
+        max-width: 1100px;
+        margin: 30px auto;
+        padding: 0 16px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .collares-home-title {
+        text-align: center;
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 38px;
+        letter-spacing: 1px;
+        color: #c90278;
+        margin: 0 0 28px;
+        font-weight: normal;
+    }
+    .collares-home-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+    }
+    @media (max-width: 720px) {
+        .collares-home-grid { grid-template-columns: 1fr; gap: 22px; }
+        .collares-home-title { font-size: 30px; }
+    }
+    .collar-card {
+        background: #fff;
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+        border: 1px solid #f3e3ed;
+        display: flex;
+        flex-direction: column;
+        transition: transform .2s, box-shadow .2s;
+    }
+    .collar-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 24px rgba(201, 2, 120, 0.15);
+    }
+    .collar-card-img {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        object-fit: cover;
+        display: block;
+        background: #faf3f7;
+    }
+    .collar-card-body {
+        padding: 22px 22px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        flex: 1;
+    }
+    .collar-card-tag {
+        align-self: flex-start;
+        background: #fdeef8;
+        color: #c90278;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        border: 1px solid #F3B5D2;
+    }
+    .collar-card-title {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 26px;
+        letter-spacing: 0.5px;
+        color: #111827;
+        margin: 0;
+        font-weight: normal;
+        line-height: 1.1;
+    }
+    .collar-card-desc {
+        font-size: 14px;
+        color: #6b7280;
+        line-height: 1.55;
+        margin: 0;
+    }
+    .collar-card-price {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 22px;
+        color: #c90278;
+        letter-spacing: 0.5px;
+        margin-top: 4px;
+    }
+    .collar-card-price small {
+        font-family: -apple-system, sans-serif;
+        font-size: 12px;
+        color: #9ca3af;
+        font-weight: 500;
+        margin-left: 4px;
+        letter-spacing: 0;
+    }
+    .collar-card-btn {
+        margin-top: auto;
+        display: inline-block;
+        background: #FDA303;
+        color: #111;
+        text-align: center;
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 18px;
+        letter-spacing: 1px;
+        padding: 12px 18px;
+        border-radius: 999px;
+        text-decoration: none;
+        transition: background .2s, transform .2s;
+        font-weight: normal;
+    }
+    .collar-card-btn:hover {
+        background: #e89102;
+        text-decoration: none;
+        color: #111;
+        transform: translateY(-1px);
+    }
+    .collar-card-btn.btn-pink {
+        background: #c90278;
+        color: #fff;
+    }
+    .collar-card-btn.btn-pink:hover {
+        background: #a8006a;
+        color: #fff;
+    }
+    </style>
+
+    <div class="collares-home-wrap">
+        <?php if (!empty($atts['titulo'])): ?>
+            <h2 class="collares-home-title"><?php echo esc_html($atts['titulo']); ?></h2>
+        <?php endif; ?>
+
+        <div class="collares-home-grid">
+
+            <!-- Card 1: Configurador de collar personalizado -->
+            <div class="collar-card">
+                <img src="<?php echo esc_url($collar_img); ?>" alt="Collar personalizado" class="collar-card-img" loading="lazy" />
+                <div class="collar-card-body">
+                    <span class="collar-card-tag">✨ Personalizado</span>
+                    <h3 class="collar-card-title">Collar de Charms Personalizado</h3>
+                    <p class="collar-card-desc">Diseña un collar único para tu peludo: elige tamaño, color y arma su nombre con charms de letras, números y emojis.</p>
+                    <div class="collar-card-price">Desde $69.800 <small>COP</small></div>
+                    <a href="<?php echo esc_url($collar_url ?: '#'); ?>" class="collar-card-btn btn-pink">Personalizar ahora</a>
+                </div>
+            </div>
+
+            <!-- Card 2: Collar Gummy -->
+            <div class="collar-card">
+                <?php if ($gummy_img): ?>
+                    <img src="<?php echo esc_url($gummy_img); ?>" alt="Collar Gummy" class="collar-card-img" loading="lazy" />
+                <?php else: ?>
+                    <div class="collar-card-img" style="display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:13px;">
+                        Configura imagen en WooCommerce
+                    </div>
+                <?php endif; ?>
+                <div class="collar-card-body">
+                    <span class="collar-card-tag" style="background:#fef3c7;color:#92400e;border-color:#fde68a;">🍬 Charms incluidos</span>
+                    <h3 class="collar-card-title">Collar Gummy</h3>
+                    <p class="collar-card-desc">Diseño divertido con charms decorativos ya incluidos. Disponible en varias tallas para tu mascota.</p>
+                    <div class="collar-card-price">$49.900 <small>COP</small></div>
+                    <a href="<?php echo esc_url($gummy_url ?: '#'); ?>" class="collar-card-btn">Comprar Gummy</a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+add_shortcode('collares_home', 'collares_home_shortcode');
 
 // Evitar que WooCommerce agrupe productos personalizados
 add_filter('woocommerce_cart_item_data_to_validate', function($cart_item_data) {
