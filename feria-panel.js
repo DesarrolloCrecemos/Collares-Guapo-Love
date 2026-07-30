@@ -460,9 +460,16 @@
 
     function currentFicha() {
         var count = state.charms.length;
+
+        // Al corregir una ficha se conserva su hora original: es la hora de la venta,
+        // no la de la corrección, y es lo que ordena la lista y sale en el PNG.
+        var previous = state.editingId
+            ? fichas.filter(function (x) { return x.id === state.editingId; })[0]
+            : null;
+
         return {
             id:        state.editingId || ('F' + Date.now().toString(36).toUpperCase()),
-            createdAt: Date.now(),
+            createdAt: previous ? previous.createdAt : Date.now(),
             evento:    cfg.evento || '',
             size:      state.size,
             collarColor: state.collarColor,
@@ -489,8 +496,9 @@
         dbRun('readwrite', function (s) { return s.put(ficha); })
             .then(loadFichas)
             .then(function () {
-                toast(state.editingId ? 'Ficha actualizada' : 'Ficha guardada' +
-                    (ficha.completa ? '' : ' (diseño incompleto)'));
+                var msg = state.editingId ? 'Ficha actualizada' : 'Ficha guardada';
+                if (!ficha.completa) msg += ' — diseño incompleto';
+                toast(msg);
                 resetDesign();
             })
             .catch(function () { toast('No se pudo guardar la ficha.', true); });
@@ -620,6 +628,44 @@
         });
     }
 
+    /**
+     * Recorta un texto al ancho disponible. fillText no ajusta ni corta: sin esto,
+     * un nombre largo se sale del lienzo y desaparece sin dejar rastro.
+     */
+    function fitText(ctx, text, maxWidth) {
+        var s = String(text || '');
+        if (ctx.measureText(s).width <= maxWidth) return s;
+
+        while (s.length > 1 && ctx.measureText(s + '…').width > maxWidth) {
+            s = s.slice(0, -1);
+        }
+        return s + '…';
+    }
+
+    /** Parte un texto en líneas que quepan en maxWidth, respetando las palabras. */
+    function wrapText(ctx, text, maxWidth, maxLines) {
+        var words = String(text || '').split(/\s+/).filter(Boolean);
+        var lines = [];
+        var line = '';
+
+        words.forEach(function (word) {
+            var probe = line ? line + ' ' + word : word;
+            if (ctx.measureText(probe).width <= maxWidth) {
+                line = probe;
+            } else {
+                if (line) lines.push(line);
+                line = word;
+            }
+        });
+        if (line) lines.push(line);
+
+        if (lines.length > maxLines) {
+            lines = lines.slice(0, maxLines);
+            lines[maxLines - 1] = fitText(ctx, lines[maxLines - 1] + ' …', maxWidth);
+        }
+        return lines;
+    }
+
     function roundRect(ctx, x, y, w, h, r) {
         ctx.beginPath();
         ctx.moveTo(x + r, y);
@@ -637,12 +683,34 @@
     function renderFichaPNG(f) {
         var canvas = $('feria-canvas');
         var ctx    = canvas.getContext('2d');
-        var W = canvas.width, H = canvas.height;
+        var W = canvas.width;
 
         var srcs = f.charms.map(charmSrc);
 
         return Promise.all(srcs.map(function (s) { return s ? loadImage(s) : Promise.resolve(null); }))
             .then(function (images) {
+
+                // La altura se calcula según el contenido. Con 9 charms y notas largas
+                // el alto fijo de 1600 se quedaba corto y la cotización quedaba fuera
+                // del lienzo, que es justo el dato que el cliente mira.
+                var noteLines = 0;
+                if (f.customer.notes) {
+                    ctx.font = 'bold 29px Helvetica, Arial, sans-serif';
+                    noteLines = wrapText(ctx, f.customer.notes, W - 60 - 360, 3).length;
+                }
+
+                var H = 520                                        // cabecera + collar
+                      + 58 + 144                                   // specs
+                      + Math.max(48, f.charms.length * 38 + 14)    // lista en orden
+                      + 58 + 144                                   // cliente
+                      + (noteLines ? 48 + (noteLines - 1) * 36 : 0)
+                      + 12 + 110                                   // caja de cotización
+                      + 110;                                       // pie
+
+                H = Math.max(1600, H);
+
+                // Asignar width/height reinicia el contexto; por eso va antes de dibujar.
+                canvas.height = H;
 
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(0, 0, W, H);
@@ -661,7 +729,8 @@
                 ctx.font = '26px Helvetica, Arial, sans-serif';
                 var head = [f.evento, new Date(f.createdAt).toLocaleDateString('es-CO')]
                     .filter(Boolean).join('  ·  ');
-                ctx.fillText(head, 60, 118);
+                // Se recorta para no chocar con el ID, que va alineado a la derecha.
+                ctx.fillText(fitText(ctx, head, 900), 60, 118);
 
                 ctx.textAlign = 'right';
                 ctx.fillStyle = '#6b7280';
@@ -724,6 +793,9 @@
                     y += 44;
                 }
 
+                var VALUE_X = 360;
+                var VALUE_W = W - 60 - VALUE_X;
+
                 function row(label, value) {
                     ctx.fillStyle = '#6b7280';
                     ctx.font = '27px Helvetica, Arial, sans-serif';
@@ -731,8 +803,24 @@
 
                     ctx.fillStyle = '#17181c';
                     ctx.font = 'bold 29px Helvetica, Arial, sans-serif';
-                    ctx.fillText(value || '—', 360, y);
+                    ctx.fillText(fitText(ctx, value || '—', VALUE_W), VALUE_X, y);
                     y += 48;
+                }
+
+                /** Como row(), pero reparte el valor en varias líneas en vez de recortarlo. */
+                function rowMultiline(label, value, maxLines) {
+                    ctx.fillStyle = '#6b7280';
+                    ctx.font = '27px Helvetica, Arial, sans-serif';
+                    ctx.fillText(label, 60, y);
+
+                    ctx.fillStyle = '#17181c';
+                    ctx.font = 'bold 29px Helvetica, Arial, sans-serif';
+
+                    var lines = wrapText(ctx, value, VALUE_W, maxLines || 3);
+                    lines.forEach(function (line, i) {
+                        ctx.fillText(line, VALUE_X, y + (i * 36));
+                    });
+                    y += 48 + Math.max(0, lines.length - 1) * 36;
                 }
 
                 section('Especificaciones');
@@ -759,7 +847,9 @@
                 row('Peludo',   f.customer.pet);
                 row('Nombre',   f.customer.name);
                 row('WhatsApp', f.customer.phone);
-                if (f.customer.notes) row('Notas', f.customer.notes);
+                // Las notas son instrucciones para producción: se ajustan en varias
+                // líneas en vez de recortarse, que es donde más duele perder texto.
+                if (f.customer.notes) rowMultiline('Notas', f.customer.notes, 3);
 
                 // --- Cotización ---
                 y += 12;
@@ -793,8 +883,11 @@
     }
 
     function fichaFileName(f) {
+        // Se conserva cualquier letra Unicode (Ñ, Ü, tildes) y solo se quita la
+        // puntuación: una lista blanca de acentos siempre deja alguno fuera y el
+        // nombre del peludo queda mutilado en el archivo.
         var who = (f.customer.pet || f.customer.name || 'ficha')
-            .replace(/[^\w\sáéíóúñÁÉÍÓÚÑ-]/g, '')
+            .replace(/[^\p{L}\p{N}\s-]/gu, '')
             .trim()
             .replace(/\s+/g, '-');
         return f.id + '_' + (who || 'ficha') + '.png';
@@ -905,11 +998,22 @@
     function csvCell(v) {
         var s = String(v === undefined || v === null ? '' : v);
 
-        // Un nombre que empiece por = + - @ lo interpreta Excel como fórmula.
-        // Los datos los teclea el operador, así que hay que neutralizarlo.
-        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+        // Excel evalúa como fórmula lo que empiece por = @ + o -, así que hay que
+        // neutralizarlo con un apóstrofo. Pero un + seguido solo de dígitos es un
+        // teléfono (+57...), no una fórmula: ahí el apóstrofo queda visible en la
+        // celda y ensucia la columna. Solo se marca cuando de verdad parece código.
+        var looksLikeFormula = /^[=@\t\r]/.test(s) || /^[+\-](?![\d\s().,-]*$)/.test(s);
+        if (looksLikeFormula) s = "'" + s;
 
         return '"' + s.replace(/"/g, '""') + '"';
+    }
+
+    /** Fecha que Excel reconoce como tal: dd/mm/aaaa hh:mm. */
+    function csvDate(ts) {
+        var d = new Date(ts);
+        function p(n) { return (n < 10 ? '0' : '') + n; }
+        return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() +
+               ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
     }
 
     function buildCSV() {
@@ -921,7 +1025,7 @@
         fichas.forEach(function (f) {
             rows.push([
                 f.id,
-                new Date(f.createdAt).toLocaleString('es-CO'),
+                csvDate(f.createdAt),
                 f.evento,
                 f.customer.pet,
                 f.customer.name,
