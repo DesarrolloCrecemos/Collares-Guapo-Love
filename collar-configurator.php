@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Configurador de Collar
  * Description: Configurador interactivo de collares personalizados con WooCommerce. Integra precios server-side, panel de pedidos con visualización de charms, correos enriquecidos, garantía de notificación de pedidos al admin y página de gracias personalizada.
- * Version: 1.6.1
+ * Version: 1.6.2
  * Author: Guapolove
  * Requires at least: 5.0
  * Requires PHP: 7.2
@@ -12,6 +12,11 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
+// Panel de Feria: configurador asistido para punto presencial. Módulo aditivo,
+// no interviene el flujo de venta ni WooCommerce. Lee precios y límites de
+// CollarConfiguratorAJAX (definida más abajo) solo en tiempo de ejecución.
+require_once plugin_dir_path(__FILE__) . 'feria-panel.php';
 
 // Registrar scripts y estilos
 function collar_enqueue_assets() {
@@ -2001,6 +2006,7 @@ class CollarConfiguratorAJAX {
                         <?php
                         $now_ts = current_time('timestamp');
                         $assets_url_row = plugin_dir_url(__FILE__) . 'assets/';
+                        $gummy_pid_panel = (int) get_option('gummy_product_id', 0);
                         // Para numerar collares dentro de un mismo pedido (#1 de 2, #2 de 2)
                         $collar_index_in_order = array();
                         foreach ($results as $idx => $row):
@@ -2030,6 +2036,21 @@ class CollarConfiguratorAJAX {
                             $order_edit_url = $row_order
                                 ? $row_order->get_edit_order_url()
                                 : admin_url('post.php?post=' . $row->order_id . '&action=edit');
+                            // ¿El pedido incluye Collar Gummy? El panel solo lista collares con
+                            // charms, así que sin esto el Gummy quedaría invisible.
+                            $gummy_badge = '';
+                            if ($row_order && $gummy_pid_panel) {
+                                $gummy_qty = 0;
+                                foreach ($row_order->get_items() as $li) {
+                                    if ((int) $li->get_product_id() === $gummy_pid_panel) {
+                                        $gummy_qty += (int) $li->get_quantity();
+                                    }
+                                }
+                                if ($gummy_qty > 0) {
+                                    $gummy_badge = '<div style="display:inline-block;margin-top:3px;padding:2px 8px;background:#0d9488;color:#fff;border-radius:10px;font-size:10px;font-weight:600;">🍬 + Gummy'
+                                                 . ($gummy_qty > 1 ? ' x' . $gummy_qty : '') . '</div>';
+                                }
+                            }
                             // Mini-charms preview
                             $mini_charms = '';
                             $charms_for_mini = json_decode(wp_unslash($row->charms_data), true);
@@ -2063,6 +2084,7 @@ class CollarConfiguratorAJAX {
                                         </a>
                                     </strong>
                                     <?php echo $multi_badge; ?>
+                                    <?php echo $gummy_badge; ?>
                                 </td>
                                 <td>
                                     <?php echo wp_date('d/m/Y H:i', strtotime($row->created_at)); ?>
@@ -2121,7 +2143,8 @@ class CollarConfiguratorAJAX {
                                 </td>
                                 <td>
                                     <strong><?php echo '$' . number_format($row->custom_price, 0, ',', '.'); ?></strong>
-                                    <?php if ($total_in_this_order > 1): ?>
+                                    <?php // El total del pedido incluye otros collares, el Gummy y el envío. ?>
+                                    <?php if (round((float) $row->order_total) > round((float) $row->custom_price)): ?>
                                         <div style="font-size:11px;color:#6b7280;margin-top:2px;">Pedido: $<?php echo number_format($row->order_total, 0, ',', '.'); ?></div>
                                     <?php endif; ?>
                                 </td>
@@ -2224,6 +2247,83 @@ class CollarConfiguratorAJAX {
                                                 <?php endif; ?>
                                             </div>
                                         </div>
+
+                                        <!-- Productos del pedido: desglose completo (collares, Gummy,
+                                             envío y total). Sin esto el Gummy quedaba invisible y el
+                                             valor del pedido no cuadraba con WooCommerce. -->
+                                        <?php if ($wc_order): ?>
+                                        <div style="background:white;padding:15px;border:1px solid #ddd;border-radius:5px;margin-bottom:20px;">
+                                            <h4 style="margin:0 0 10px;">🛍️ Productos del pedido</h4>
+                                            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                                                <thead>
+                                                    <tr style="color:#6b7280;border-bottom:1px solid #e5e7eb;">
+                                                        <th style="padding:6px 4px;text-align:left;">Artículo</th>
+                                                        <th style="padding:6px 4px;text-align:center;width:60px;">Cant.</th>
+                                                        <th style="padding:6px 4px;text-align:right;width:120px;">Importe</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                <?php
+                                                $gummy_pid_detail = (int) get_option('gummy_product_id', 0);
+                                                foreach ($wc_order->get_items() as $li) {
+                                                    $is_gummy_item = $gummy_pid_detail && (int) $li->get_product_id() === $gummy_pid_detail;
+
+                                                    // Metas visibles del artículo (Tamaño, Color, Talla Gummy...).
+                                                    // Se omiten los internos (prefijo _) y el JSON de charms.
+                                                    $li_details = array();
+                                                    foreach ($li->get_meta_data() as $md) {
+                                                        $mdata = $md->get_data();
+                                                        $mkey  = isset($mdata['key']) ? (string) $mdata['key'] : '';
+                                                        $mval  = isset($mdata['value']) ? $mdata['value'] : '';
+                                                        if ($mkey === '' || $mkey[0] === '_') continue;
+                                                        if ($mkey === 'Configuración de Charms') continue;
+                                                        if (!is_scalar($mval) || $mval === '') continue;
+                                                        $li_details[] = $mkey . ': ' . $mval;
+                                                    }
+                                                    ?>
+                                                    <tr style="border-bottom:1px solid #f3f4f6;">
+                                                        <td style="padding:8px 4px;">
+                                                            <strong><?php echo esc_html($li->get_name()); ?></strong>
+                                                            <?php if ($is_gummy_item): ?>
+                                                                <span style="display:inline-block;margin-left:6px;padding:2px 8px;background:#0d9488;color:#fff;border-radius:10px;font-size:10px;font-weight:600;">🍬 Gummy</span>
+                                                            <?php endif; ?>
+                                                            <?php if (!empty($li_details)): ?>
+                                                                <div style="color:#6b7280;font-size:12px;margin-top:3px;"><?php echo esc_html(implode(' · ', $li_details)); ?></div>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <td style="padding:8px 4px;text-align:center;"><?php echo (int) $li->get_quantity(); ?></td>
+                                                        <td style="padding:8px 4px;text-align:right;">$<?php echo number_format((float) $li->get_total(), 0, ',', '.'); ?></td>
+                                                    </tr>
+                                                    <?php
+                                                }
+
+                                                // Envío cobrado como fee (selector propio) y como shipping nativo.
+                                                foreach ($wc_order->get_items('fee') as $fee) { ?>
+                                                    <tr style="border-bottom:1px solid #f3f4f6;color:#374151;">
+                                                        <td style="padding:8px 4px;">🚚 <?php echo esc_html($fee->get_name()); ?></td>
+                                                        <td style="padding:8px 4px;text-align:center;">—</td>
+                                                        <td style="padding:8px 4px;text-align:right;">$<?php echo number_format((float) $fee->get_total(), 0, ',', '.'); ?></td>
+                                                    </tr>
+                                                <?php }
+                                                foreach ($wc_order->get_items('shipping') as $ship) {
+                                                    if (round((float) $ship->get_total()) <= 0) continue; ?>
+                                                    <tr style="border-bottom:1px solid #f3f4f6;color:#374151;">
+                                                        <td style="padding:8px 4px;">🚚 <?php echo esc_html($ship->get_name()); ?></td>
+                                                        <td style="padding:8px 4px;text-align:center;">—</td>
+                                                        <td style="padding:8px 4px;text-align:right;">$<?php echo number_format((float) $ship->get_total(), 0, ',', '.'); ?></td>
+                                                    </tr>
+                                                <?php } ?>
+                                                    <tr>
+                                                        <td colspan="2" style="padding:10px 4px;text-align:right;font-weight:700;">Total del pedido</td>
+                                                        <td style="padding:10px 4px;text-align:right;font-weight:700;font-size:15px;">$<?php echo number_format((float) $wc_order->get_total(), 0, ',', '.'); ?></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                            <p style="margin:10px 0 0;color:#6b7280;font-size:12px;">
+                                                Este es el pedido completo tal como está en WooCommerce. Arriba, «Charms seleccionados» corresponde solo a este collar.
+                                            </p>
+                                        </div>
+                                        <?php endif; ?>
 
                                         <!-- Bloque de envío -->
                                         <div style="background:white;padding:15px;border:1px solid #ddd;border-radius:5px;margin-bottom:20px;">
