@@ -24,7 +24,9 @@
         size:        'S',
         collarColor: cfg.collarColors ? cfg.collarColors[1] : { slug: 'collar2', label: 'Negro', hex: '#000000' },
         charmColor:  '#FF64DC',
-        charms:      []
+        charms:      [],
+        // Índice del charm seleccionado para quitar (solo en pantallas táctiles).
+        armedIndex:  null
     };
 
     var fichas = [];
@@ -356,11 +358,14 @@
             isGlitter: isGlitter
         });
 
+        state.armedIndex = null;
         renderAll();
     }
 
     function removeCharm(index) {
         state.charms.splice(index, 1);
+        // Los índices se corren al quitar: cualquier selección previa deja de ser válida.
+        state.armedIndex = null;
         renderAll();
     }
 
@@ -368,12 +373,14 @@
     function removeLastCharm() {
         if (!state.charms.length) return;
         state.charms.pop();
+        state.armedIndex = null;
         renderAll();
     }
 
     function resetDesign() {
         state.editingId = null;
         state.charms = [];
+        state.armedIndex = null;
         ['feria-pet', 'feria-name', 'feria-phone', 'feria-notes'].forEach(function (id) {
             $(id).value = '';
         });
@@ -385,9 +392,16 @@
      * Render
      * ------------------------------------------------------------------ */
 
+    /**
+     * ¿El dispositivo tiene cursor real? Con cursor, el hover ya avisa cuál charm
+     * se va a quitar y basta un clic. En táctil no hay hover, así que el primer
+     * toque selecciona y el segundo confirma: evita borrar de más frente al cliente.
+     */
+    var CAN_HOVER = !!(window.matchMedia && window.matchMedia('(hover: hover)').matches);
+
     function charmNode(charm, onClick) {
         var el = document.createElement('div');
-        el.className = 'feria-charm';
+        el.className = 'feria-charm' + (onClick ? ' feria-charm-clickable' : '');
 
         var src = charmSrc(charm);
         if (src) {
@@ -409,22 +423,67 @@
         return el;
     }
 
+    /**
+     * Un toque sobre un charm. Con cursor lo quita directo; en táctil el primer
+     * toque lo arma y el segundo lo quita.
+     */
+    function tapCharm(index) {
+        if (CAN_HOVER) {
+            state.armedIndex = null;
+            removeCharm(index);
+            return;
+        }
+
+        if (state.armedIndex === index) {
+            state.armedIndex = null;
+            removeCharm(index);
+        } else {
+            state.armedIndex = index;
+            renderAll();
+        }
+    }
+
     function renderPreview() {
         var band = $('feria-preview-band');
         var host = $('feria-preview-charms');
+
+        // Red de seguridad: cambiar de talla recorta charms y abrir otra ficha
+        // reemplaza la lista, así que una selección vieja puede quedar fuera de rango.
+        if (state.armedIndex !== null &&
+            (state.armedIndex < 0 || state.armedIndex >= state.charms.length)) {
+            state.armedIndex = null;
+        }
 
         band.style.background = state.collarColor.hex;
         host.innerHTML = '';
 
         state.charms.forEach(function (charm, i) {
-            host.appendChild(charmNode(charm, function () { removeCharm(i); }));
+            var node = charmNode(charm, function (e) {
+                e.stopPropagation();
+                tapCharm(i);
+            });
+            if (state.armedIndex === i) {
+                node.classList.add('is-armed');
+            }
+            host.appendChild(node);
         });
 
         var hasCharms = state.charms.length > 0;
         $('feria-preview-empty').style.display = hasCharms ? 'none' : '';
 
-        // La pista de borrado solo tiene sentido cuando hay algo que borrar.
-        $('feria-preview-hint').style.visibility = hasCharms ? 'visible' : 'hidden';
+        // La pista de borrado solo tiene sentido cuando hay algo que borrar, y
+        // cambia según el paso en el que va el operador.
+        var hint = $('feria-preview-hint');
+        hint.style.visibility = hasCharms ? 'visible' : 'hidden';
+
+        if (state.armedIndex !== null && state.armedIndex !== undefined) {
+            hint.textContent = 'Toca de nuevo el charm resaltado para quitarlo';
+        } else if (CAN_HOVER) {
+            hint.textContent = 'Haz clic en un charm del collar para quitarlo';
+        } else {
+            hint.textContent = 'Toca un charm del collar para seleccionarlo';
+        }
+
         $('feria-undo').disabled = !hasCharms;
     }
 
@@ -524,6 +583,7 @@
         state.size        = f.size;
         state.collarColor = f.collarColor;
         state.charms      = f.charms.slice();
+        state.armedIndex  = null;
 
         $('feria-pet').value   = f.customer.pet || '';
         $('feria-name').value  = f.customer.name || '';
@@ -546,6 +606,7 @@
         state.size        = f.size;
         state.collarColor = f.collarColor;
         state.charms      = f.charms.slice();
+        state.armedIndex  = null;
 
         $('feria-pet').value   = '';
         $('feria-name').value  = f.customer.name || '';
@@ -1161,6 +1222,115 @@
     }
 
     /* ---------------------------------------------------------------------
+     * Visor de referencias del producto
+     *
+     * Fotos reales del collar para enseñarle al cliente en el stand. Solo existe
+     * si hay imágenes configuradas; el template no imprime el visor si no las hay.
+     * ------------------------------------------------------------------ */
+
+    var viewerIndex = 0;
+
+    function galleryImages() {
+        return cfg.gallery || [];
+    }
+
+    function buildViewerThumbs() {
+        var host = $('feria-viewer-thumbs');
+        if (!host) return;
+
+        host.innerHTML = '';
+
+        galleryImages().forEach(function (img, i) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'feria-viewer-thumb';
+
+            var el = document.createElement('img');
+            el.src = img.thumb || img.full;
+            el.alt = '';
+            b.appendChild(el);
+
+            b.addEventListener('click', function () { showViewerImage(i); });
+            host.appendChild(b);
+        });
+    }
+
+    function showViewerImage(i) {
+        var images = galleryImages();
+        if (!images.length) return;
+
+        // Se envuelve en los extremos: pasar del final al principio es lo natural
+        // cuando estás mostrándole las fotos a alguien.
+        viewerIndex = (i + images.length) % images.length;
+        var img = images[viewerIndex];
+
+        $('feria-viewer-img').src = img.full;
+        $('feria-viewer-caption').textContent = img.caption || '';
+        $('feria-viewer-counter').textContent = (viewerIndex + 1) + ' de ' + images.length;
+
+        Array.prototype.forEach.call($('feria-viewer-thumbs').children, function (b, idx) {
+            b.classList.toggle('is-active', idx === viewerIndex);
+        });
+    }
+
+    function openViewer() {
+        var viewer = $('feria-viewer');
+        if (!viewer) return;
+
+        viewer.hidden = false;
+        viewer.setAttribute('aria-hidden', 'false');
+        showViewerImage(viewerIndex);
+    }
+
+    function closeViewer() {
+        var viewer = $('feria-viewer');
+        if (!viewer) return;
+
+        viewer.hidden = true;
+        viewer.setAttribute('aria-hidden', 'true');
+    }
+
+    function viewerIsOpen() {
+        var viewer = $('feria-viewer');
+        return viewer && !viewer.hidden;
+    }
+
+    function bindViewer() {
+        if (!$('feria-viewer')) return;
+
+        buildViewerThumbs();
+
+        $('feria-open-gallery').addEventListener('click', openViewer);
+        $('feria-viewer-close').addEventListener('click', closeViewer);
+        $('feria-viewer-prev').addEventListener('click', function () { showViewerImage(viewerIndex - 1); });
+        $('feria-viewer-next').addEventListener('click', function () { showViewerImage(viewerIndex + 1); });
+
+        // Deslizar con el dedo, que es como el cliente va a pasar las fotos.
+        var startX = null;
+        var stage  = $('feria-viewer-stage');
+
+        stage.addEventListener('touchstart', function (e) {
+            startX = e.touches[0].clientX;
+        }, { passive: true });
+
+        stage.addEventListener('touchend', function (e) {
+            if (startX === null) return;
+            var dx = e.changedTouches[0].clientX - startX;
+            if (Math.abs(dx) > 45) {
+                showViewerImage(viewerIndex + (dx < 0 ? 1 : -1));
+            }
+            startX = null;
+        }, { passive: true });
+
+        document.addEventListener('keydown', function (e) {
+            if (!viewerIsOpen()) return;
+            if (e.key === 'Escape')     closeViewer();
+            if (e.key === 'ArrowLeft')  showViewerImage(viewerIndex - 1);
+            if (e.key === 'ArrowRight') showViewerImage(viewerIndex + 1);
+        });
+    }
+
+    /* ---------------------------------------------------------------------
      * Cajones y eventos
      * ------------------------------------------------------------------ */
 
@@ -1199,6 +1369,7 @@
         // escribiendo en un campo de texto.
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Backspace') return;
+            if (viewerIsOpen()) return;   // mirando fotos, no editando el collar
             var el = document.activeElement;
             if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
             e.preventDefault();
@@ -1230,6 +1401,14 @@
             var which = tab.dataset.tab;
             $('feria-panel-letters').classList.toggle('is-active', which === 'letters');
             $('feria-panel-emojis').classList.toggle('is-active', which === 'emojis');
+        });
+
+        // Tocar fuera del collar cancela la selección: si el operador se arrepiente,
+        // no debe quedarse un charm armado esperando un segundo toque accidental.
+        document.addEventListener('click', function () {
+            if (state.armedIndex === null) return;
+            state.armedIndex = null;
+            renderAll();
         });
 
         window.addEventListener('online',  paintNetwork);
@@ -1268,6 +1447,7 @@
         buildEmojis();
         renderAll();
         bindEvents();
+        bindViewer();
         paintNetwork();
         registerSW();
 

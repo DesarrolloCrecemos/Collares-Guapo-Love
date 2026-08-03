@@ -43,6 +43,18 @@ class CollarFeriaPanel {
     const SLUG  = 'panel-interno';
     const TITLE = 'Panel Interno de Personalización';
 
+    /**
+     * Tallas que el panel NO ofrece.
+     *
+     * Solo afecta al punto presencial: la tienda online sigue vendiendo XS con
+     * normalidad, porque las constantes de CollarConfiguratorAJAX quedan intactas.
+     * Para reponerla basta con vaciar este array.
+     */
+    const HIDDEN_SIZES = array('XS');
+
+    /** Imágenes de referencia del producto que ve el asistente (IDs de adjuntos). */
+    const OPT_GALLERY = 'collar_feria_galeria';
+
     const COOKIE       = 'collar_feria_auth';
     const SESSION_DAYS = 30;
 
@@ -122,9 +134,14 @@ class CollarFeriaPanel {
         $assets_path = wp_parse_url(plugin_dir_url(__FILE__) . 'assets/', PHP_URL_PATH);
         $panel_path  = rtrim(wp_parse_url(home_url('/' . self::SLUG), PHP_URL_PATH), '/');
 
+        $uploads      = wp_get_upload_dir();
+        $uploads_path = !empty($uploads['baseurl'])
+            ? wp_parse_url(trailingslashit($uploads['baseurl']), PHP_URL_PATH)
+            : '';
+
         $js = str_replace(
-            array('__FERIA_ASSETS__', '__FERIA_PATH__'),
-            array($assets_path, $panel_path),
+            array('__FERIA_ASSETS__', '__FERIA_UPLOADS__', '__FERIA_PATH__'),
+            array($assets_path, $uploads_path, $panel_path),
             $js
         );
 
@@ -344,6 +361,15 @@ class CollarFeriaPanel {
         $urls[] = $assets . 'texturas/dorada/' . rawurlencode('PAGINA WEB COLLARES-11.png');
         $urls[] = $assets . 'texturas/plateada/' . rawurlencode('PAGINA WEB COLLARES-10.png');
 
+        // Las referencias del producto también deben verse sin conexión: son para
+        // enseñárselas al cliente, y el stand es justo donde falla el WiFi.
+        foreach ($this->gallery_images() as $img) {
+            $urls[] = $img['full'];
+            if ($img['thumb'] !== $img['full']) {
+                $urls[] = $img['thumb'];
+            }
+        }
+
         return $urls;
     }
 
@@ -370,7 +396,8 @@ class CollarFeriaPanel {
             'baseCharms'  => CollarConfiguratorAJAX::BASE_CHARMS_INCLUDED,
             'minCharms'   => CollarConfiguratorAJAX::MIN_CHARMS,
             'maxBySize'   => CollarConfiguratorAJAX::MAX_CHARMS_BY_SIZE,
-            'sizes'       => CollarConfiguratorAJAX::ALLOWED_SIZES,
+            'sizes'       => $this->visible_sizes(),
+            'gallery'     => $this->gallery_images(),
             'xsColors'    => CollarConfiguratorAJAX::XS_ALLOWED_COLORS,
             'collarColors'=> $this->collar_colors(),
             'charmColors' => $this->charm_colors(),
@@ -379,6 +406,62 @@ class CollarFeriaPanel {
             'soldOut'     => array_values($sold_out),
             'precache'    => $this->get_precache_urls(),
         );
+    }
+
+    /** Tallas ofrecidas en el panel, sin las ocultas. */
+    public function visible_sizes() {
+        $sizes = array_diff(CollarConfiguratorAJAX::ALLOWED_SIZES, self::HIDDEN_SIZES);
+        return array_values($sizes);
+    }
+
+    /**
+     * Imágenes de referencia del producto para mostrar al cliente en el stand.
+     *
+     * Se toman de la galería configurada a mano y, si está vacía, de la galería
+     * del producto en WooCommerce: así hay algo que mostrar sin configurar nada.
+     * Es solo lectura de imágenes; no crea ni toca pedidos.
+     */
+    public function gallery_images() {
+        $ids = get_option(self::OPT_GALLERY, array());
+        if (!is_array($ids)) {
+            $ids = array();
+        }
+        $ids = array_filter(array_map('intval', $ids));
+
+        if (empty($ids)) {
+            $product_id = (int) get_option('collar_product_id', 0);
+            if ($product_id) {
+                $thumb = get_post_thumbnail_id($product_id);
+                if ($thumb) {
+                    $ids[] = (int) $thumb;
+                }
+                $gallery = get_post_meta($product_id, '_product_image_gallery', true);
+                if (!empty($gallery)) {
+                    foreach (explode(',', $gallery) as $gid) {
+                        $gid = (int) $gid;
+                        if ($gid) {
+                            $ids[] = $gid;
+                        }
+                    }
+                }
+            }
+        }
+
+        $images = array();
+        foreach (array_unique($ids) as $id) {
+            $full = wp_get_attachment_image_src($id, 'large');
+            if (!$full) {
+                continue;
+            }
+            $thumb = wp_get_attachment_image_src($id, 'medium');
+            $images[] = array(
+                'full'    => $full[0],
+                'thumb'   => $thumb ? $thumb[0] : $full[0],
+                'caption' => wp_get_attachment_caption($id) ?: get_the_title($id),
+            );
+        }
+
+        return $images;
     }
 
     /** Colores del collar. Los hex coinciden con .collar-band-preview del CSS de venta. */
@@ -571,6 +654,10 @@ class CollarFeriaPanel {
             wp_die('Sin permisos.');
         }
 
+        // Selector de imágenes de la biblioteca de medios. Llamarlo aquí funciona:
+        // los scripts se imprimen en el pie del admin, después de este render.
+        wp_enqueue_media();
+
         $notices = array();
 
         if (isset($_POST['collar_feria_save']) && check_admin_referer('collar_feria_settings')) {
@@ -591,6 +678,10 @@ class CollarFeriaPanel {
             $sold_out = isset($_POST['feria_agotados']) ? (array) wp_unslash($_POST['feria_agotados']) : array();
             $sold_out = array_map('sanitize_text_field', $sold_out);
             update_option(self::OPT_SOLD_OUT, $sold_out);
+
+            $gallery = isset($_POST['feria_galeria']) ? wp_unslash($_POST['feria_galeria']) : '';
+            $gallery = array_filter(array_map('intval', explode(',', $gallery)));
+            update_option(self::OPT_GALLERY, array_values($gallery));
 
             $notices[] = array('updated', 'Ajustes guardados.');
         }
@@ -675,6 +766,25 @@ class CollarFeriaPanel {
                     </tr>
 
                     <tr>
+                        <th scope="row">Imágenes de referencia</th>
+                        <td>
+                            <div id="feria-galeria-preview" class="feria-galeria-admin"></div>
+                            <input type="hidden" id="feria_galeria" name="feria_galeria"
+                                   value="<?php echo esc_attr(implode(',', (array) get_option(self::OPT_GALLERY, array()))); ?>">
+                            <p>
+                                <button type="button" class="button" id="feria-galeria-elegir">Elegir imágenes</button>
+                                <button type="button" class="button" id="feria-galeria-limpiar">Quitar todas</button>
+                            </p>
+                            <p class="description">
+                                Fotos del producto que el asistente puede mostrarle al cliente en el stand.
+                                Si no eliges ninguna, el panel usa la galería del producto en WooCommerce.
+                                Se descargan con «Preparar para trabajar sin internet», así que también
+                                se ven sin señal.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <tr>
                         <th scope="row">Agotados en este evento</th>
                         <td>
                             <fieldset>
@@ -714,6 +824,93 @@ class CollarFeriaPanel {
                 la tienda. Si agregas o quitas charms, usa «Releer catálogo» para que el panel los tome.
             </p>
         </div>
+
+        <style>
+            .feria-galeria-admin {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 10px;
+            }
+            .feria-galeria-admin img {
+                width: 80px;
+                height: 80px;
+                object-fit: cover;
+                border-radius: 6px;
+                border: 1px solid #dcdcde;
+            }
+            .feria-galeria-admin p { color: #646970; margin: 0; }
+        </style>
+
+        <script>
+        jQuery(function ($) {
+            var input   = $('#feria_galeria');
+            var preview = $('#feria-galeria-preview');
+            var frame   = null;
+
+            function paint(images) {
+                preview.empty();
+                if (!images.length) {
+                    preview.append($('<p>').text('Sin imágenes propias — se usará la galería del producto.'));
+                    return;
+                }
+                images.forEach(function (src) {
+                    preview.append($('<img>').attr('src', src).attr('alt', ''));
+                });
+            }
+
+            // Estado inicial: se piden las miniaturas de los IDs ya guardados.
+            var ids = input.val() ? input.val().split(',').filter(Boolean) : [];
+            if (ids.length) {
+                wp.media.query({ post__in: ids, posts_per_page: -1, type: 'image' })
+                    .more().then(function () {
+                        var srcs = [];
+                        wp.media.query({ post__in: ids, posts_per_page: -1, type: 'image' })
+                            .each(function (m) {
+                                var sizes = m.get('sizes');
+                                srcs.push(sizes && sizes.thumbnail ? sizes.thumbnail.url : m.get('url'));
+                            });
+                        paint(srcs);
+                    });
+            } else {
+                paint([]);
+            }
+
+            $('#feria-galeria-elegir').on('click', function (e) {
+                e.preventDefault();
+
+                if (!frame) {
+                    frame = wp.media({
+                        title: 'Imágenes de referencia del producto',
+                        button: { text: 'Usar estas imágenes' },
+                        library: { type: 'image' },
+                        multiple: true
+                    });
+
+                    frame.on('select', function () {
+                        var sel  = frame.state().get('selection');
+                        var ids  = [];
+                        var srcs = [];
+                        sel.each(function (m) {
+                            ids.push(m.id);
+                            var sizes = m.get('sizes');
+                            srcs.push(sizes && sizes.thumbnail ? sizes.thumbnail.url : m.get('url'));
+                        });
+                        input.val(ids.join(','));
+                        paint(srcs);
+                    });
+                }
+
+                frame.open();
+            });
+
+            $('#feria-galeria-limpiar').on('click', function (e) {
+                e.preventDefault();
+                input.val('');
+                paint([]);
+            });
+        });
+        </script>
         <?php
     }
 }

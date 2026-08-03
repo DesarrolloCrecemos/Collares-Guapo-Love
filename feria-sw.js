@@ -14,8 +14,9 @@
 // v2: la ruta del panel cambió de /feria a /panel-interno, así que la caché
 // vieja apunta a una URL que ya no existe. Al subir el nombre, activate la borra.
 var CACHE  = 'collar-feria-v2';
-var ASSETS = '__FERIA_ASSETS__';   // ruta de assets/ del plugin
-var PANEL  = '__FERIA_PATH__';     // ruta del panel (CollarFeriaPanel::SLUG)
+var ASSETS  = '__FERIA_ASSETS__';   // ruta de assets/ del plugin
+var UPLOADS = '__FERIA_UPLOADS__';  // ruta de uploads: ahí viven las fotos de referencia
+var PANEL   = '__FERIA_PATH__';     // ruta del panel (CollarFeriaPanel::SLUG)
 
 /* ------------------------------------------------------------------------
  * Ciclo de vida
@@ -137,8 +138,12 @@ self.addEventListener('fetch', function (event) {
         return;
     }
 
-    // Assets del configurador: caché primero, son inmutables en la práctica.
-    if (url.pathname.indexOf(ASSETS) !== 0) return;
+    // Charms del configurador y fotos de referencia: caché primero, en la práctica
+    // son inmutables. Cualquier otra ruta del sitio se deja pasar sin tocar.
+    var cacheable = url.pathname.indexOf(ASSETS) === 0 ||
+                    (UPLOADS && url.pathname.indexOf(UPLOADS) === 0);
+
+    if (!cacheable) return;
 
     event.respondWith(
         caches.match(req).then(function (hit) {

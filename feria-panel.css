@@ -280,35 +280,49 @@ button { font-family: inherit; cursor: pointer; }
 
 .feria-charm img { height: 34px; width: auto; display: block; }
 
-/* La × va siempre visible. Antes solo aparecía en :active, así que en una tablet
-   el operador no tenía forma de saber que podía borrar un charm suelto y acababa
-   reiniciando el collar entero. */
-.feria-charm::after {
-    content: '×';
+/* Sin insignia encima del charm: la × tapaba la letra justo cuando el operador
+   necesitaba leerla. Ahora el charm se resalta al recorrerlo y se quita al pulsar,
+   así el collar se lee entero en todo momento. */
+.feria-charm {
+    padding: 4px 3px;
+    border-radius: 8px;
+    outline: 2px solid transparent;
+    outline-offset: 1px;
+    transition: transform .12s, background .12s, outline-color .12s;
+}
+
+.feria-charm-clickable { cursor: pointer; }
+
+/* Resaltado al pasar el cursor (escritorio) o al seleccionar con el dedo (táctil). */
+@media (hover: hover) {
+    .feria-charm-clickable:hover {
+        background: rgba(255, 255, 255, .22);
+        outline-color: #fff;
+        transform: translateY(-3px) scale(1.06);
+    }
+}
+
+.feria-charm.is-armed {
+    background: rgba(255, 1, 91, .35);
+    outline-color: #fff;
+    transform: translateY(-3px) scale(1.1);
+}
+
+.feria-charm-clickable:active { transform: scale(.9); }
+
+/* Marca discreta bajo el charm seleccionado: señala cuál se va a quitar sin
+   taparlo. Solo aparece cuando el charm está armado. */
+.feria-charm.is-armed::after {
+    content: '';
     position: absolute;
-    top: -7px;
-    right: -7px;
-    width: 19px;
-    height: 19px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, .95);
-    color: #111;
-    font-size: 13px;
-    font-weight: 700;
-    line-height: 19px;
-    text-align: center;
-    text-shadow: none;
-    opacity: .85;
-    transition: opacity .15s, transform .12s;
-    pointer-events: none;
+    left: 50%;
+    bottom: -9px;
+    width: 22px;
+    height: 3px;
+    border-radius: 2px;
+    background: #fff;
+    transform: translateX(-50%);
 }
-
-.feria-charm:active::after {
-    opacity: 1;
-    transform: scale(1.25);
-}
-
-.feria-charm:active { transform: scale(.88); }
 
 .feria-preview-empty {
     margin: 12px 0 0;
@@ -843,6 +857,125 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .feria-progress p { margin: 7px 0 0; font-size: 12.5px; color: var(--feria-muted); }
+
+/* =========================================================================
+   Visor de referencias del producto
+   ========================================================================= */
+
+.feria-viewer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 80;
+    background: rgba(12, 12, 15, .96);
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+    gap: 10px;
+}
+
+.feria-viewer[hidden] { display: none; }
+
+.feria-viewer-head {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #fff;
+}
+
+.feria-viewer-title   { font-size: 16px; font-weight: 700; }
+.feria-viewer-counter { font-size: 13px; color: #9ca3af; margin-right: auto; }
+
+.feria-viewer-close {
+    width: 46px;
+    height: 46px;
+    border: none;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .12);
+    color: #fff;
+    font-size: 30px;
+    line-height: 1;
+}
+
+.feria-viewer-stage {
+    flex: 1 1 auto;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+}
+
+.feria-viewer-stage img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 10px;
+    /* Sin fondo transparente: muchas fotos de producto son PNG recortados. */
+    background: #fff;
+}
+
+.feria-viewer-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 54px;
+    height: 54px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .16);
+    color: #fff;
+    font-size: 34px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.feria-viewer-nav:active { background: rgba(255, 255, 255, .3); }
+.feria-viewer-prev { left: 6px; }
+.feria-viewer-next { right: 6px; }
+
+.feria-viewer-caption {
+    flex: 0 0 auto;
+    margin: 0;
+    text-align: center;
+    color: #d1d5db;
+    font-size: 13.5px;
+    min-height: 18px;
+}
+
+.feria-viewer-thumbs {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.feria-viewer-thumb {
+    flex: 0 0 auto;
+    width: 66px;
+    height: 66px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 9px;
+    overflow: hidden;
+    background: #fff;
+    opacity: .55;
+    transition: opacity .15s, border-color .15s;
+}
+
+.feria-viewer-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.feria-viewer-thumb.is-active {
+    opacity: 1;
+    border-color: var(--feria-accent);
+}
 
 /* =========================================================================
    Aviso flotante

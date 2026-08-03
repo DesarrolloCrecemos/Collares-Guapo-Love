@@ -25,6 +25,11 @@ if (!defined('ABSPATH')) {
 
         <div class="feria-topbar-actions">
             <span class="feria-net" id="feria-net" title="Estado de conexión"></span>
+            <?php if (!empty($config['gallery'])): ?>
+                <button type="button" class="feria-btn feria-btn-ghost" id="feria-open-gallery">
+                    Ver producto
+                </button>
+            <?php endif; ?>
             <button type="button" class="feria-btn feria-btn-ghost" id="feria-open-list">
                 Fichas de hoy <span class="feria-badge" id="feria-count">0</span>
             </button>
@@ -167,6 +172,26 @@ if (!defined('ABSPATH')) {
             </button>
         </div>
     </aside>
+
+    <!-- ================= Visor de referencias del producto ================= -->
+    <?php if (!empty($config['gallery'])): ?>
+    <div class="feria-viewer" id="feria-viewer" hidden aria-hidden="true">
+        <div class="feria-viewer-head">
+            <span class="feria-viewer-title">Referencias del producto</span>
+            <span class="feria-viewer-counter" id="feria-viewer-counter"></span>
+            <button type="button" class="feria-viewer-close" id="feria-viewer-close" aria-label="Cerrar">&times;</button>
+        </div>
+
+        <div class="feria-viewer-stage" id="feria-viewer-stage">
+            <button type="button" class="feria-viewer-nav feria-viewer-prev" id="feria-viewer-prev" aria-label="Anterior">&#8249;</button>
+            <img id="feria-viewer-img" src="" alt="">
+            <button type="button" class="feria-viewer-nav feria-viewer-next" id="feria-viewer-next" aria-label="Siguiente">&#8250;</button>
+        </div>
+
+        <p class="feria-viewer-caption" id="feria-viewer-caption"></p>
+        <div class="feria-viewer-thumbs" id="feria-viewer-thumbs"></div>
+    </div>
+    <?php endif; ?>
 
     <div class="feria-scrim" id="feria-scrim" hidden></div>
     <div class="feria-toast" id="feria-toast" hidden></div>
