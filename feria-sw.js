@@ -1,5 +1,5 @@
 /* =========================================================================
-   Service worker del Panel de Feria.
+   Service worker del Panel Interno de Personalización.
 
    Se sirve desde la raíz del sitio para que su alcance cubra /wp-content/,
    donde viven los charms. Ese alcance amplio obliga a ser estrictos: este
@@ -11,9 +11,11 @@
    Los marcadores __FERIA_*__ los reemplaza feria-panel.php al servir el archivo.
    ========================================================================= */
 
-var CACHE  = 'collar-feria-v1';
+// v2: la ruta del panel cambió de /feria a /panel-interno, así que la caché
+// vieja apunta a una URL que ya no existe. Al subir el nombre, activate la borra.
+var CACHE  = 'collar-feria-v2';
 var ASSETS = '__FERIA_ASSETS__';   // ruta de assets/ del plugin
-var PANEL  = '__FERIA_PATH__';     // ruta del panel, normalmente /feria
+var PANEL  = '__FERIA_PATH__';     // ruta del panel (CollarFeriaPanel::SLUG)
 
 /* ------------------------------------------------------------------------
  * Ciclo de vida

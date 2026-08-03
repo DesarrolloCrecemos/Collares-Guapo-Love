@@ -1,6 +1,6 @@
 <?php
 /**
- * Pantalla del Panel de Feria.
+ * Pantalla del Panel Interno de Personalización.
  *
  * Diseñada para tablet en horizontal, sin scroll en el área de trabajo: el operador
  * atiende de pie frente al cliente y no puede perder tiempo buscando controles.
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 
     <header class="feria-topbar">
         <div class="feria-brand">
-            <span class="feria-logo">Panel de Feria</span>
+            <span class="feria-logo"><?php echo esc_html(CollarFeriaPanel::TITLE); ?></span>
             <?php if (!empty($config['evento'])): ?>
                 <span class="feria-evento"><?php echo esc_html($config['evento']); ?></span>
             <?php endif; ?>
@@ -44,6 +44,15 @@ if (!defined('ABSPATH')) {
                 <p class="feria-preview-empty" id="feria-preview-empty">
                     Toca las letras o los emojis para armar el collar
                 </p>
+            </div>
+
+            <div class="feria-preview-tools">
+                <span class="feria-preview-hint" id="feria-preview-hint">
+                    Toca un charm del collar para borrarlo
+                </span>
+                <button type="button" class="feria-undo-btn" id="feria-undo" disabled>
+                    &#9003; Borrar último
+                </button>
             </div>
 
             <div class="feria-summary">

@@ -1,6 +1,6 @@
 <?php
 /**
- * Panel de Feria — configurador asistido para punto presencial.
+ * Panel Interno de Personalización — configurador asistido para punto presencial.
  *
  * Herramienta de apoyo para que un operador personalice collares junto al cliente
  * en una feria y genere una ficha (PNG) con el diseño y los datos de contacto.
@@ -30,7 +30,18 @@ class CollarFeriaPanel {
 
     /** Versión de las rewrite rules. Al subirla se refrescan los permalinks. */
     const OPT_REWRITE_VER = 'collar_feria_rewrite_ver';
-    const REWRITE_VER     = '1';
+    const REWRITE_VER     = '2';
+
+    /**
+     * Slug público del panel y nombre visible.
+     *
+     * Los nombres de opción siguen diciendo "feria" a propósito: renombrarlos
+     * perdería el PIN y los ajustes ya configurados. Solo cambia lo que ve el
+     * usuario. Si se cambia SLUG hay que subir REWRITE_VER para refrescar los
+     * permalinks, y el service worker se re-registra solo en la ruta nueva.
+     */
+    const SLUG  = 'panel-interno';
+    const TITLE = 'Panel Interno de Personalización';
 
     const COOKIE       = 'collar_feria_auth';
     const SESSION_DAYS = 30;
@@ -46,7 +57,7 @@ class CollarFeriaPanel {
         add_filter('query_vars', array($this, 'add_query_var'));
 
         // Prioridad 5: hay que renderizar antes de redirect_canonical (prioridad 10),
-        // que si no manda /feria a /feria/ y /feria-sw.js a /feria-sw.js/.
+        // que si no manda /panel-interno a /panel-interno/ y el sw a .js/.
         add_action('template_redirect', array($this, 'maybe_render_panel'), 5);
 
         // Un service worker servido tras una redirección no se registra: el navegador
@@ -62,16 +73,16 @@ class CollarFeriaPanel {
     }
 
     /* ---------------------------------------------------------------------
-     * Ruta pública /feria
+     * Ruta pública del panel (self::SLUG)
      * ------------------------------------------------------------------ */
 
     public function add_rewrite() {
-        add_rewrite_rule('^feria/?$', 'index.php?collar_feria=1', 'top');
+        add_rewrite_rule('^' . self::SLUG . '/?$', 'index.php?collar_feria=1', 'top');
 
         // El service worker se sirve desde la raíz a propósito: su alcance debe
-        // cubrir /wp-content/, donde están los charms. Si viviera bajo /feria/
+        // cubrir /wp-content/, donde están los charms. Si viviera bajo el panel
         // no podría cachearlos.
-        add_rewrite_rule('^feria-sw\.js$', 'index.php?collar_feria_sw=1', 'top');
+        add_rewrite_rule('^' . self::SLUG . '-sw\.js$', 'index.php?collar_feria_sw=1', 'top');
 
         if (get_option(self::OPT_REWRITE_VER) !== self::REWRITE_VER) {
             flush_rewrite_rules();
@@ -109,7 +120,7 @@ class CollarFeriaPanel {
         }
 
         $assets_path = wp_parse_url(plugin_dir_url(__FILE__) . 'assets/', PHP_URL_PATH);
-        $panel_path  = rtrim(wp_parse_url(home_url('/feria'), PHP_URL_PATH), '/');
+        $panel_path  = rtrim(wp_parse_url(home_url('/' . self::SLUG), PHP_URL_PATH), '/');
 
         $js = str_replace(
             array('__FERIA_ASSETS__', '__FERIA_PATH__'),
@@ -129,7 +140,7 @@ class CollarFeriaPanel {
     /**
      * Excluye la respuesta del caché de borde (LiteSpeed en este hosting).
      *
-     * Es obligatorio, no una optimización: /feria devuelve la pantalla de PIN o el
+     * Es obligatorio, no una optimización: el panel devuelve la pantalla de PIN o el
      * panel abierto según la cookie del operador. Si el borde cachea una de las dos
      * y la sirve a todo el mundo, o se filtra el panel desbloqueado o el operador
      * autenticado queda encerrado en la pantalla de PIN.
@@ -163,12 +174,14 @@ class CollarFeriaPanel {
 
         if (empty($pin_hash)) {
             // Sin PIN configurado el panel NO se abre. Denegar por defecto.
-            $this->render_shell('<div class="feria-gate-msg">
-                <h1>Panel de Feria</h1>
-                <p>Todavía no se ha configurado un PIN de acceso.</p>
-                <p class="feria-gate-hint">Un administrador debe definirlo en
-                <strong>Collares &rsaquo; Panel de Feria</strong> dentro de WordPress.</p>
-            </div>');
+            $this->render_shell(
+                '<div class="feria-gate-msg">'
+                . '<h1>' . esc_html(self::TITLE) . '</h1>'
+                . '<p>Todavía no se ha configurado un PIN de acceso.</p>'
+                . '<p class="feria-gate-hint">Un administrador debe definirlo en '
+                . '<strong>Collares &rsaquo; Panel Interno</strong> dentro de WordPress.</p>'
+                . '</div>'
+            );
             exit;
         }
 
@@ -348,6 +361,9 @@ class CollarFeriaPanel {
         return array(
             'assetsUrl'   => plugin_dir_url(__FILE__) . 'assets/',
             'ajaxUrl'     => admin_url('admin-ajax.php'),
+            // Ruta del service worker: se calcula aquí para que renombrar SLUG no
+            // deje al JS registrando una URL que ya no existe.
+            'swUrl'       => wp_parse_url(home_url('/' . self::SLUG . '-sw.js'), PHP_URL_PATH),
             'evento'      => get_option(self::OPT_EVENT, ''),
             'basePrices'  => CollarConfiguratorAJAX::BASE_PRICES,
             'extraCharm'  => CollarConfiguratorAJAX::EXTRA_CHARM_PRICE,
@@ -408,7 +424,7 @@ class CollarFeriaPanel {
 <meta charset="<?php bloginfo('charset'); ?>">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive">
-<title>Panel de Feria — <?php bloginfo('name'); ?></title>
+<title><?php echo esc_html(self::TITLE); ?> — <?php bloginfo('name'); ?></title>
 <style><?php echo $css; ?></style>
 <?php echo $extra_head; ?>
 </head>
@@ -423,7 +439,7 @@ class CollarFeriaPanel {
         ?>
         <div class="feria-lock">
             <div class="feria-lock-card">
-                <h1>Panel de Feria</h1>
+                <h1><?php echo esc_html(self::TITLE); ?></h1>
                 <p class="feria-lock-sub">Ingresa el PIN para comenzar</p>
 
                 <div class="feria-pin-dots" id="pin-dots">
@@ -542,8 +558,8 @@ class CollarFeriaPanel {
     public function add_admin_menu() {
         add_submenu_page(
             'collar-configurator',
-            'Panel de Feria',
-            'Panel de Feria',
+            self::TITLE,
+            'Panel Interno',
             'manage_options',
             'collar-feria',
             array($this, 'admin_page')
@@ -587,7 +603,7 @@ class CollarFeriaPanel {
         $catalog   = $this->get_catalog();
         $sold_out  = (array) get_option(self::OPT_SOLD_OUT, array());
         $has_pin   = (bool) get_option(self::OPT_PIN, '');
-        $panel_url = home_url('/feria');
+        $panel_url = home_url('/' . self::SLUG);
 
         $emoji_count = 0;
         foreach ($catalog['emojis'] as $files) {
@@ -595,7 +611,7 @@ class CollarFeriaPanel {
         }
         ?>
         <div class="wrap">
-            <h1>Panel de Feria</h1>
+            <h1><?php echo esc_html(self::TITLE); ?></h1>
 
             <?php foreach ($notices as $n): ?>
                 <div class="notice notice-<?php echo esc_attr($n[0] === 'error' ? 'error' : 'success'); ?>">

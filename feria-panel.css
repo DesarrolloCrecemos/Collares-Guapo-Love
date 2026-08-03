@@ -1,5 +1,5 @@
 /* =========================================================================
-   Panel de Feria — estilos
+   Panel Interno de Personalización — estilos
    Tablet en horizontal. Objetivos táctiles grandes, sin scroll en el área de
    trabajo, contraste alto para stands con luz difícil.
    ========================================================================= */
@@ -240,6 +240,12 @@ button { font-family: inherit; cursor: pointer; }
     background: var(--feria-bg);
     border-radius: 12px;
     padding: 18px 12px;
+
+    /* Con 9 charms el collar mide ~354px. En un teléfono angosto desbordaría y
+       empujaría toda la página en horizontal: aquí se desplaza dentro del marco. */
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .feria-preview-band {
@@ -274,6 +280,9 @@ button { font-family: inherit; cursor: pointer; }
 
 .feria-charm img { height: 34px; width: auto; display: block; }
 
+/* La × va siempre visible. Antes solo aparecía en :active, así que en una tablet
+   el operador no tenía forma de saber que podía borrar un charm suelto y acababa
+   reiniciando el collar entero. */
 .feria-charm::after {
     content: '×';
     position: absolute;
@@ -289,17 +298,61 @@ button { font-family: inherit; cursor: pointer; }
     line-height: 19px;
     text-align: center;
     text-shadow: none;
-    opacity: 0;
-    transition: opacity .15s;
+    opacity: .85;
+    transition: opacity .15s, transform .12s;
+    pointer-events: none;
 }
 
-.feria-charm:active::after { opacity: 1; }
+.feria-charm:active::after {
+    opacity: 1;
+    transform: scale(1.25);
+}
+
+.feria-charm:active { transform: scale(.88); }
 
 .feria-preview-empty {
     margin: 12px 0 0;
     font-size: 13px;
     color: var(--feria-muted);
     text-align: center;
+}
+
+/* Barra de corrección bajo el collar: la pista de que se puede borrar de a uno
+   y el atajo para deshacer el último, que es el error más común al teclear. */
+.feria-preview-tools {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: -4px;
+}
+
+.feria-preview-hint {
+    font-size: 12.5px;
+    color: var(--feria-muted);
+    line-height: 1.35;
+}
+
+.feria-undo-btn {
+    flex: 0 0 auto;
+    min-height: 42px;
+    padding: 0 16px;
+    border: 1px solid var(--feria-line);
+    border-radius: 10px;
+    background: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--feria-ink);
+    white-space: nowrap;
+    transition: transform .08s, opacity .15s;
+}
+
+.feria-undo-btn:active { transform: scale(.95); }
+
+.feria-undo-btn:disabled {
+    opacity: .35;
+    pointer-events: none;
 }
 
 /* =========================================================================
@@ -829,6 +882,55 @@ button { font-family: inherit; cursor: pointer; }
     }
 
     .feria-col { min-height: 0; }
+    .feria-col-preview { overflow-y: visible; }
     .feria-tabpanel { overflow: visible; max-height: none; }
     .feria-evento { display: none; }
+}
+
+/* =========================================================================
+   Teléfono. El panel está pensado para tablet, pero debe seguir siendo usable
+   en un móvil: es el dispositivo de respaldo si la tablet falla en el stand.
+   ========================================================================= */
+
+@media (max-width: 600px) {
+    .feria-main { padding: 10px; gap: 10px; }
+    .feria-col  { padding: 12px; }
+
+    /* Los campos de datos a una sola columna: dos de 165px son inescribibles. */
+    .feria-customer { grid-template-columns: 1fr; }
+
+    /* El nombre completo no cabe en la barra superior. */
+    .feria-logo { font-size: 15px; }
+
+    .feria-preview-tools {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .feria-preview-hint { text-align: center; }
+    .feria-undo-btn { width: 100%; }
+
+    .feria-actions { grid-template-columns: 1fr; }
+    .feria-actions .feria-btn { min-height: 50px; }
+
+    /* Teclas y emojis más pequeños para que quepan más por fila. */
+    .feria-keyboard   { grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 6px; }
+    .feria-key        { height: 48px; font-size: 19px; }
+    .feria-emoji-grid { grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 6px; }
+    .feria-emoji      { min-height: 60px; padding: 5px; }
+
+    .feria-swatch       { width: 44px; height: 44px; }
+    .feria-charm-color  { width: 40px; height: 40px; }
+    .feria-size-btn     { height: 46px; font-size: 15px; }
+
+    .feria-card-actions { grid-template-columns: 1fr 1fr; }
+    .feria-drawer       { width: 100%; max-width: 100%; }
+}
+
+/* Móvil en horizontal: la barra superior y el teclado comen toda la altura. */
+@media (max-height: 480px) and (orientation: landscape) {
+    .feria-topbar { height: 48px; }
+    .feria-preview-stage { min-height: 96px; padding: 10px; }
+    .feria-preview-band  { height: 48px; }
+    .feria-charm img     { height: 28px; }
 }

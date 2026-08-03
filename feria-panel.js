@@ -1,5 +1,5 @@
 /* =========================================================================
-   Panel de Feria — lógica del operador.
+   Panel Interno de Personalización — lógica del operador.
 
    Todo vive en el navegador: el diseño en memoria, las fichas en IndexedDB y
    el catálogo en el Cache API. El panel debe seguir funcionando con el WiFi
@@ -364,6 +364,13 @@
         renderAll();
     }
 
+    /** Deshace el último charm. El error típico es la letra recién tecleada. */
+    function removeLastCharm() {
+        if (!state.charms.length) return;
+        state.charms.pop();
+        renderAll();
+    }
+
     function resetDesign() {
         state.editingId = null;
         state.charms = [];
@@ -413,7 +420,12 @@
             host.appendChild(charmNode(charm, function () { removeCharm(i); }));
         });
 
-        $('feria-preview-empty').style.display = state.charms.length ? 'none' : '';
+        var hasCharms = state.charms.length > 0;
+        $('feria-preview-empty').style.display = hasCharms ? 'none' : '';
+
+        // La pista de borrado solo tiene sentido cuando hay algo que borrar.
+        $('feria-preview-hint').style.visibility = hasCharms ? 'visible' : 'hidden';
+        $('feria-undo').disabled = !hasCharms;
     }
 
     function renderSummary() {
@@ -1103,7 +1115,7 @@
     function registerSW() {
         if (!('serviceWorker' in navigator)) return;
 
-        navigator.serviceWorker.register('/feria-sw.js', { scope: '/' })
+        navigator.serviceWorker.register(cfg.swUrl || '/panel-interno-sw.js', { scope: '/' })
             .then(function (reg) { swReg = reg; })
             .catch(function () { /* sin service worker el panel sigue funcionando online */ });
 
@@ -1181,6 +1193,17 @@
 
     function bindEvents() {
         $('feria-save').addEventListener('click', saveFicha);
+        $('feria-undo').addEventListener('click', removeLastCharm);
+
+        // Retroceso físico si hay teclado conectado, siempre que no se esté
+        // escribiendo en un campo de texto.
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Backspace') return;
+            var el = document.activeElement;
+            if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
+            e.preventDefault();
+            removeLastCharm();
+        });
         $('feria-clear').addEventListener('click', function () {
             if (state.charms.length && !window.confirm('¿Descartar este diseño?')) return;
             resetDesign();
