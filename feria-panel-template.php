@@ -17,7 +17,9 @@ if (!defined('ABSPATH')) {
 
     <header class="feria-topbar">
         <div class="feria-brand">
-            <span class="feria-logo"><?php echo esc_html(CollarFeriaPanel::TITLE); ?></span>
+            <?php // Dos rótulos: el CSS muestra el corto cuando no cabe el largo. ?>
+            <span class="feria-logo feria-logo-full"><?php echo esc_html(CollarFeriaPanel::TITLE); ?></span>
+            <span class="feria-logo feria-logo-short">Panel Interno</span>
             <?php if (!empty($config['evento'])): ?>
                 <span class="feria-evento"><?php echo esc_html($config['evento']); ?></span>
             <?php endif; ?>
@@ -27,11 +29,14 @@ if (!defined('ABSPATH')) {
             <span class="feria-net" id="feria-net" title="Estado de conexión"></span>
             <?php if (!empty($config['gallery'])): ?>
                 <button type="button" class="feria-btn feria-btn-ghost" id="feria-open-gallery">
-                    Ver producto
+                    <span class="feria-label-full">Ver producto</span>
+                    <span class="feria-label-short">Producto</span>
                 </button>
             <?php endif; ?>
             <button type="button" class="feria-btn feria-btn-ghost" id="feria-open-list">
-                Fichas de hoy <span class="feria-badge" id="feria-count">0</span>
+                <span class="feria-label-full">Fichas de hoy</span>
+                <span class="feria-label-short">Fichas</span>
+                <span class="feria-badge" id="feria-count">0</span>
             </button>
             <button type="button" class="feria-btn feria-btn-ghost" id="feria-open-menu" aria-label="Más opciones">&#9776;</button>
         </div>

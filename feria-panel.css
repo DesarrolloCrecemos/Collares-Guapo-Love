@@ -163,14 +163,26 @@ button { font-family: inherit; cursor: pointer; }
     padding: 0 16px;
 }
 
-.feria-brand { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+.feria-brand {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;      /* permite que el rótulo se recorte en vez de empujar los botones */
+    overflow: hidden;
+}
 
 .feria-logo {
     font-size: 17px;
     font-weight: 700;
     letter-spacing: -.2px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+
+/* Por defecto manda el nombre completo; el corto entra en pantallas angostas. */
+.feria-logo-short,
+.feria-label-short { display: none; }
 
 .feria-evento {
     font-size: 13px;
@@ -180,7 +192,15 @@ button { font-family: inherit; cursor: pointer; }
     white-space: nowrap;
 }
 
-.feria-topbar-actions { display: flex; align-items: center; gap: 10px; }
+/* Los botones nunca se encogen ni se parten: antes "Fichas de hoy" caía en tres
+   líneas y el contador se salía de la barra. */
+.feria-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
 
 .feria-net {
     width: 10px;
@@ -1005,16 +1025,25 @@ button { font-family: inherit; cursor: pointer; }
    ========================================================================= */
 
 @media (max-width: 900px) {
-    html, body { overflow: auto; }
+    /* height:100% dejaba el documento clavado a la altura de la ventana: el panel
+       apilado mide bastante más y todo lo que quedaba por debajo era inalcanzable,
+       porque no había scroll. Con altura automática la página crece y se desplaza. */
+    html, body {
+        height: auto;
+        min-height: 100%;
+        overflow: visible;
+    }
 
     .feria-app { height: auto; min-height: 100vh; }
 
     .feria-main {
-        grid-template-columns: 1fr;
+        /* minmax(0,1fr) y no 1fr: el mínimo automático de una pista de grid es el
+           ancho mínimo del contenido, y eso ensanchaba la columna más que la pantalla. */
+        grid-template-columns: minmax(0, 1fr);
         height: auto;
     }
 
-    .feria-col { min-height: 0; }
+    .feria-col { min-height: 0; min-width: 0; }
     .feria-col-preview { overflow-y: visible; }
     .feria-tabpanel { overflow: visible; max-height: none; }
     .feria-evento { display: none; }
@@ -1032,8 +1061,16 @@ button { font-family: inherit; cursor: pointer; }
     /* Los campos de datos a una sola columna: dos de 165px son inescribibles. */
     .feria-customer { grid-template-columns: 1fr; }
 
-    /* El nombre completo no cabe en la barra superior. */
+    /* El nombre completo no cabe junto a tres botones: se cambia por el corto. */
     .feria-logo { font-size: 15px; }
+    .feria-logo-full,
+    .feria-label-full { display: none; }
+    .feria-logo-short { display: inline; }
+    .feria-label-short { display: inline; }
+
+    .feria-topbar { padding: 0 10px; }
+    .feria-topbar-actions { gap: 6px; }
+    .feria-btn-ghost { padding: 0 10px; font-size: 13px; }
 
     .feria-preview-tools {
         flex-direction: column;
@@ -1058,6 +1095,13 @@ button { font-family: inherit; cursor: pointer; }
 
     .feria-card-actions { grid-template-columns: 1fr 1fr; }
     .feria-drawer       { width: 100%; max-width: 100%; }
+}
+
+/* Muy estrecho (iPhone SE y similares): con tres botones el rótulo queda en
+   "Panel In…", que no informa de nada. Mejor cederle el espacio a los botones. */
+@media (max-width: 360px) {
+    .feria-logo { display: none; }
+    .feria-topbar-actions { gap: 8px; }
 }
 
 /* Móvil en horizontal: la barra superior y el teclado comen toda la altura. */
