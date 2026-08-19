@@ -18,6 +18,10 @@ if (!defined('ABSPATH')) {
 // CollarConfiguratorAJAX (definida más abajo) solo en tiempo de ejecución.
 require_once plugin_dir_path(__FILE__) . 'feria-panel.php';
 
+// Vigilante de nonces: detecta páginas cacheadas cuyo nonce ya venció, purga la
+// caché y avisa. Segunda capa sobre el reintento que ya hace el front.
+require_once plugin_dir_path(__FILE__) . 'nonce-watchdog.php';
+
 // Registrar scripts y estilos
 function collar_enqueue_assets() {
     // NO hacer nada aquí - solo cargar cuando se use el shortcode

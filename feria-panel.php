@@ -823,6 +823,45 @@ class CollarFeriaPanel {
                 El panel lee estos archivos directamente de <code>assets/</code>, igual que el configurador de
                 la tienda. Si agregas o quitas charms, usa «Releer catálogo» para que el panel los tome.
             </p>
+
+            <hr>
+
+            <h2>Vigilante de nonces</h2>
+            <?php
+            $wd = class_exists('CollarNonceWatchdog') ? CollarNonceWatchdog::status() : array();
+            $next = wp_next_scheduled('collar_nonce_watchdog');
+            ?>
+            <?php if (empty($wd)): ?>
+                <p>Aún no se ha ejecutado ninguna revisión.</p>
+            <?php elseif (empty($wd['problems'])): ?>
+                <p>
+                    <span style="color:#008a20;font-weight:600;">Todo correcto.</span>
+                    Última revisión: <?php echo esc_html($wd['time']); ?>
+                    (<?php echo (int) $wd['checked']; ?> página<?php echo ((int) $wd['checked']) === 1 ? '' : 's'; ?> revisada<?php echo ((int) $wd['checked']) === 1 ? '' : 's'; ?>).
+                </p>
+            <?php else: ?>
+                <div class="notice notice-warning inline">
+                    <p>
+                        <strong>Se detectaron nonces vencidos</strong> en la última revisión
+                        (<?php echo esc_html($wd['time']); ?>). La caché ya se purgó automáticamente.
+                    </p>
+                    <ul style="list-style:disc;margin-left:22px;">
+                        <?php foreach ($wd['problems'] as $p): ?>
+                            <li><?php echo esc_html($p['url']); ?> — caché: <?php echo esc_html($p['cache']); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
+
+            <p class="description">
+                Revisa cada hora las páginas con los shortcodes del collar tal como las recibe un
+                visitante anónimo. Si el nonce servido ya venció, purga la caché y avisa por correo.
+                LiteSpeed guarda el HTML hasta 7 días y un nonce vive 24 horas, así que sin esto una
+                página cacheada puede quedar sirviendo un token muerto durante días.
+                <?php if ($next): ?>
+                    Próxima revisión: <?php echo esc_html(get_date_from_gmt(gmdate('Y-m-d H:i:s', $next), 'Y-m-d H:i')); ?>.
+                <?php endif; ?>
+            </p>
         </div>
 
         <style>
