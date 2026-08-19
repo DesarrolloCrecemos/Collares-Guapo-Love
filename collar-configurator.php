@@ -3025,31 +3025,70 @@ function collar_gummy_shortcode() {
             btn.disabled = true;
             btn.textContent = 'Agregando...';
 
-            var data = new URLSearchParams({
-                action: 'gummy_add_to_cart',
-                nonce: _gNonce,
-                product_id: _gPid,
-                gummy_size: _gSize
-            });
-
-            fetch(_gAjax, { method: 'POST', body: data })
-                .then(function(r) { return r.json(); })
+            gummyPost(_gNonce)
                 .then(function(resp) {
+                    // null = nonce rechazado: se pide uno fresco y se reintenta UNA vez.
+                    if (resp !== null) return resp;
+                    return gummyRefreshNonce().then(gummyPost);
+                })
+                .then(function(resp) {
+                    if (resp === null) {
+                        throw new Error('Tu sesión expiró. Recarga la página e intenta de nuevo.');
+                    }
                     if (resp.success) {
                         gummyShowMsg('¡Añadido al carrito! <a href="' + resp.data.cart_url + '" style="color:inherit;font-weight:700;text-decoration:underline;">Ver carrito</a>', 'success');
                         document.querySelectorAll('.cart-contents-count, .count').forEach(function(el) {
                             el.textContent = resp.data.cart_count;
                         });
                     } else {
-                        gummyShowMsg(resp.data.message || 'Error al agregar.', 'error');
+                        gummyShowMsg((resp.data && resp.data.message) || 'Error al agregar.', 'error');
                     }
                 })
-                .catch(function() { gummyShowMsg('Error de conexión.', 'error'); })
+                .catch(function(err) {
+                    gummyShowMsg(err && err.message ? err.message : 'Error de conexión.', 'error');
+                })
                 .finally(function() {
                     btn.disabled = false;
                     btn.textContent = 'Agregar al carrito';
                 });
         };
+
+        // POST al carrito. Devuelve el JSON, o null si el nonce fue rechazado
+        // (403, o cuerpo no-JSON tipo "-1"), que es lo que pasa cuando LiteSpeed
+        // sirve esta página cacheada con un nonce ya vencido.
+        function gummyPost(nonce) {
+            var body = new URLSearchParams({
+                action: 'gummy_add_to_cart',
+                nonce: nonce,
+                product_id: _gPid,
+                gummy_size: _gSize
+            });
+
+            return fetch(_gAjax, { method: 'POST', body: body, credentials: 'same-origin' })
+                .then(function(r) {
+                    if (r.status === 403) return null;
+                    return r.text().then(function(t) {
+                        try { return JSON.parse(t); } catch (e) { return null; }
+                    });
+                });
+        }
+
+        // admin-ajax nunca se cachea, así que de aquí sale un nonce siempre válido.
+        function gummyRefreshNonce() {
+            return fetch(_gAjax, {
+                method: 'POST',
+                body: new URLSearchParams({ action: 'collar_refresh_nonce' }),
+                credentials: 'same-origin'
+            })
+                .then(function(r) { return r.json(); })
+                .then(function(resp) {
+                    if (resp && resp.success && resp.data && resp.data.nonce) {
+                        _gNonce = resp.data.nonce;
+                        return _gNonce;
+                    }
+                    throw new Error('No se pudo actualizar la sesión. Recarga la página e intenta de nuevo.');
+                });
+        }
 
         function gummyShowMsg(msg, type) {
             var el = document.getElementById('gummy-cart-msg');
