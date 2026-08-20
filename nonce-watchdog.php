@@ -262,9 +262,24 @@ class CollarNonceWatchdog {
      */
     public function notify_email() {
         $email = get_option(self::OPT_EMAIL, '');
+
         if (!is_email($email)) {
-            $email = self::DEFAULT_EMAIL;
+            return self::DEFAULT_EMAIL;
         }
+
+        // Guarda dura: aunque alguien escriba el buzón del cliente en los ajustes,
+        // estos avisos no van ahí. Son técnicos y solo generan alarma en quien no
+        // puede actuar sobre ellos. Los correos de pedidos de WooCommerce siguen
+        // llegándole con normalidad: eso es otro camino y no se toca.
+        $blocked = array_filter(array_map('strtolower', array(
+            get_option('admin_email'),
+            get_bloginfo('admin_email'),
+        )));
+
+        if (in_array(strtolower($email), $blocked, true)) {
+            return self::DEFAULT_EMAIL;
+        }
+
         return $email;
     }
 
