@@ -21,9 +21,19 @@ if (!defined('ABSPATH')) {
 
 class CollarNonceWatchdog {
 
-    const HOOK        = 'collar_nonce_watchdog';
-    const OPT_STATUS  = 'collar_nonce_watchdog_status';
+    const HOOK         = 'collar_nonce_watchdog';
+    const OPT_STATUS   = 'collar_nonce_watchdog_status';
+    const OPT_EMAIL    = 'collar_nonce_watchdog_email';
     const NONCE_ACTION = 'collar_config_nonce';
+
+    /**
+     * Destinatario por defecto de los avisos.
+     *
+     * NO se usa admin_email a propósito: ese es el buzón del cliente, y un correo
+     * técnico sobre nonces y caché solo genera alarma en quien no puede actuar.
+     * Esto es información para quien mantiene el sitio.
+     */
+    const DEFAULT_EMAIL = 'desarrollo@crecemoslab.com';
 
     public function __construct() {
         add_action('init', array($this, 'schedule'));
@@ -135,7 +145,6 @@ class CollarNonceWatchdog {
         }
 
         $previous = get_option(self::OPT_STATUS, array());
-        $was_ok   = empty($previous['problems']);
 
         update_option(self::OPT_STATUS, array(
             'time'     => current_time('mysql'),
@@ -147,37 +156,116 @@ class CollarNonceWatchdog {
             return;
         }
 
-        // Purgar regenera las páginas con un nonce fresco.
-        do_action('litespeed_purge_all');
+        $purged   = $this->purge_cache();
+        $resolved = $purged ? $this->recheck($problems) : false;
 
-        // Solo se avisa al pasar de bien a mal: si el problema persiste no tiene
-        // sentido mandar un correo cada hora.
-        if ($was_ok) {
-            $this->notify($problems);
+        update_option(self::OPT_STATUS, array(
+            'time'     => current_time('mysql'),
+            'checked'  => $checked,
+            'problems' => $resolved ? array() : $problems,
+            'last_fix' => current_time('mysql'),
+            'fixes'    => (int) (isset($previous['fixes']) ? $previous['fixes'] : 0) + ($resolved ? 1 : 0),
+            'resolved' => $resolved,
+        ));
+
+        // Solo se avisa si la purga NO resolvió. Que un nonce caduque es rutina:
+        // el tick dura 12 h y la caché hasta 7 días, así que pasa a diario y el
+        // front ya reintenta solo. Avisar de cada caso sería ruido garantizado.
+        // Lo que sí merece una persona mirando es que el arreglo no funcione.
+        if (!$resolved) {
+            $this->notify($problems, $purged);
         }
     }
 
-    private function notify($problems) {
+    /**
+     * Purga la caché de LiteSpeed.
+     *
+     * Se usa el método estático y no do_action('litespeed_purge_all'): el hook
+     * informa de éxito pero deja páginas en "hit" con objetos de horas —
+     * comprobado en producción—, mientras que Purge::purge_all() sí deja la
+     * caché en "miss".
+     */
+    private function purge_cache() {
+        if (class_exists('LiteSpeed\Purge') && method_exists('LiteSpeed\Purge', 'purge_all')) {
+            LiteSpeed\Purge::purge_all('collar nonce watchdog');
+            return true;
+        }
+
+        if (has_action('litespeed_purge_all')) {
+            do_action('litespeed_purge_all');
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Vuelve a pedir las páginas para confirmar que la purga surtió efecto. Sin
+     * esto el aviso afirmaría haber arreglado algo sin comprobarlo.
+     */
+    private function recheck($problems) {
+        foreach ($problems as $p) {
+            $res = wp_remote_get($p['url'], array(
+                'timeout'   => 20,
+                'sslverify' => false,
+            ));
+
+            if (is_wp_error($res) || wp_remote_retrieve_response_code($res) !== 200) {
+                return false;
+            }
+
+            foreach ($this->extract_nonces(wp_remote_retrieve_body($res)) as $nonce) {
+                if (!wp_verify_nonce($nonce, self::NONCE_ACTION)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private function notify($problems, $purged) {
         $lines = array(
-            'Se detectaron páginas cacheadas con un nonce vencido. La caché ya se purgó automáticamente.',
-            '',
-            'Efecto si no se corrige: al agregar al carrito, admin-ajax responde 403 y el cliente ve',
-            '"Error de conexión". Afecta a todos los visitantes que reciban esa copia cacheada.',
+            'El vigilante detectó páginas cacheadas con un nonce vencido y NO pudo repararlo solo.',
             '',
         );
 
+        $lines[] = $purged
+            ? 'Se purgó la caché, pero al volver a revisar las páginas el nonce seguía vencido.'
+            : 'No se pudo purgar la caché: LiteSpeed no está disponible o cambió su API.';
+
+        $lines[] = '';
+        $lines[] = 'Impacto para el cliente: ninguno inmediato. El configurador pide un nonce fresco';
+        $lines[] = 'y reintenta solo, así que la compra funciona; solo cuesta una petición extra.';
+        $lines[] = '';
+        $lines[] = 'Páginas afectadas:';
+
         foreach ($problems as $p) {
-            $lines[] = sprintf('- %s (nonce %s, caché: %s)', $p['url'], $p['nonce'], $p['cache']);
+            $lines[] = sprintf('  - %s (nonce %s, caché: %s)', $p['url'], $p['nonce'], $p['cache']);
         }
 
         $lines[] = '';
-        $lines[] = 'Revisa en Collares → Panel Interno el estado del vigilante.';
+        $lines[] = 'Purga manual: wp litespeed-purge all';
+        $lines[] = 'Estado del vigilante: Collares → Panel Interno.';
 
         wp_mail(
-            get_option('admin_email'),
-            '[' . get_bloginfo('name') . '] Nonce vencido en página cacheada',
-            implode("\n", $lines)
+            $this->notify_email(),
+            '[' . get_bloginfo('name') . '] El vigilante de nonces no pudo repararse solo',
+            implode("
+", $lines)
         );
+    }
+
+    /**
+     * Destinatario de los avisos. Nunca admin_email: ese buzón es del cliente y
+     * este contenido es técnico.
+     */
+    public function notify_email() {
+        $email = get_option(self::OPT_EMAIL, '');
+        if (!is_email($email)) {
+            $email = self::DEFAULT_EMAIL;
+        }
+        return $email;
     }
 
     /** Estado legible para mostrar en el admin. */

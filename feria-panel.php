@@ -679,6 +679,9 @@ class CollarFeriaPanel {
             $sold_out = array_map('sanitize_text_field', $sold_out);
             update_option(self::OPT_SOLD_OUT, $sold_out);
 
+            $wd_email = isset($_POST['feria_wd_email']) ? sanitize_email(wp_unslash($_POST['feria_wd_email'])) : '';
+            update_option('collar_nonce_watchdog_email', is_email($wd_email) ? $wd_email : '');
+
             $gallery = isset($_POST['feria_galeria']) ? wp_unslash($_POST['feria_galeria']) : '';
             $gallery = array_filter(array_map('intval', explode(',', $gallery)));
             update_option(self::OPT_GALLERY, array_values($gallery));
@@ -828,7 +831,12 @@ class CollarFeriaPanel {
 
             <h2>Vigilante de nonces</h2>
             <?php
-            $wd = class_exists('CollarNonceWatchdog') ? CollarNonceWatchdog::status() : array();
+            $wd_ok      = class_exists('CollarNonceWatchdog');
+            $wd         = $wd_ok ? CollarNonceWatchdog::status() : array();
+            // Se resuelve una vez y con guarda: si el módulo del vigilante no cargara,
+            // una referencia directa a la constante dejaría esta página en error fatal
+            // y sin acceso a los ajustes del panel.
+            $wd_default = $wd_ok ? CollarNonceWatchdog::DEFAULT_EMAIL : '';
             $next = wp_next_scheduled('collar_nonce_watchdog');
             ?>
             <?php if (empty($wd)): ?>
@@ -838,6 +846,12 @@ class CollarFeriaPanel {
                     <span style="color:#008a20;font-weight:600;">Todo correcto.</span>
                     Última revisión: <?php echo esc_html($wd['time']); ?>
                     (<?php echo (int) $wd['checked']; ?> página<?php echo ((int) $wd['checked']) === 1 ? '' : 's'; ?> revisada<?php echo ((int) $wd['checked']) === 1 ? '' : 's'; ?>).
+                    <?php if (!empty($wd['fixes'])): ?>
+                        <br><span class="description">
+                            Se ha reparado solo <?php echo (int) $wd['fixes']; ?>
+                            vez<?php echo ((int) $wd['fixes']) === 1 ? '' : 'es'; ?> sin necesidad de avisar.
+                        </span>
+                    <?php endif; ?>
                 </p>
             <?php else: ?>
                 <div class="notice notice-warning inline">
@@ -853,9 +867,24 @@ class CollarFeriaPanel {
                 </div>
             <?php endif; ?>
 
+            <form method="post" style="margin:12px 0;">
+                <?php wp_nonce_field('collar_feria_settings'); ?>
+                <label for="feria_wd_email"><strong>Avisar a:</strong></label>
+                <input type="email" id="feria_wd_email" name="feria_wd_email" class="regular-text"
+                       value="<?php echo esc_attr(get_option('collar_nonce_watchdog_email', '')); ?>"
+                       placeholder="<?php echo esc_attr($wd_default); ?>">
+                <button type="submit" name="collar_feria_save" class="button">Guardar</button>
+                <p class="description">
+                    Correo técnico de quien mantiene el sitio. Si se deja vacío se usa
+                    <code><?php echo esc_html($wd_default); ?></code>.
+                    Nunca se envía al correo del administrador del sitio: es el buzón del cliente
+                    y este aviso solo alarma a quien no puede actuar sobre él.
+                </p>
+            </form>
+
             <p class="description">
                 Revisa cada hora las páginas con los shortcodes del collar tal como las recibe un
-                visitante anónimo. Si el nonce servido ya venció, purga la caché y avisa por correo.
+                visitante anónimo. Si el nonce servido ya venció, purga la caché y comprueba que quedó resuelto. Solo avisa por correo si NO logró repararlo.
                 LiteSpeed guarda el HTML hasta 7 días y un nonce vive 24 horas, así que sin esto una
                 página cacheada puede quedar sirviendo un token muerto durante días.
                 <?php if ($next): ?>
