@@ -24,6 +24,17 @@ class CollarNonceWatchdog {
     const HOOK         = 'collar_nonce_watchdog';
     const OPT_STATUS   = 'collar_nonce_watchdog_status';
     const OPT_EMAIL    = 'collar_nonce_watchdog_email';
+    const OPT_NOTIFY   = 'collar_nonce_watchdog_notify';
+
+    /**
+     * Ejecuciones seguidas con el problema antes de avisar.
+     *
+     * La purga de LiteSpeed no surte efecto dentro de la misma petición, así que
+     * comprobar justo después daba falsos negativos y disparaba un correo cada
+     * hora. En vez de reintentar en caliente se mira si el problema sigue en las
+     * siguientes pasadas: si se arregló solo, nadie se entera.
+     */
+    const ALERT_AFTER  = 3;
     const NONCE_ACTION = 'collar_config_nonce';
 
     /**
@@ -109,23 +120,19 @@ class CollarNonceWatchdog {
         $checked  = 0;
 
         foreach ($this->watched_urls() as $url) {
-            // Sin cookies y sin cabeceras especiales: se pide igual que un visitante
-            // anónimo, que es justo a quien LiteSpeed le entrega la copia cacheada.
+            // Sin cookies ni cabeceras especiales: se pide igual que un visitante
+            // anónimo, que es a quien LiteSpeed le entrega la copia cacheada.
             $res = wp_remote_get($url, array(
                 'timeout'     => 20,
                 'redirection' => 3,
                 'sslverify'   => false,
-                'headers'     => array('Cache-Control' => ''),
             ));
 
             if (is_wp_error($res) || wp_remote_retrieve_response_code($res) !== 200) {
                 continue;
             }
 
-            $html   = wp_remote_retrieve_body($res);
-            $cache  = wp_remote_retrieve_header($res, 'x-litespeed-cache');
-            $nonces = $this->extract_nonces($html);
-
+            $nonces = $this->extract_nonces(wp_remote_retrieve_body($res));
             if (empty($nonces)) {
                 continue;
             }
@@ -137,102 +144,102 @@ class CollarNonceWatchdog {
                     $problems[] = array(
                         'url'   => $url,
                         'nonce' => $nonce,
-                        'cache' => $cache ? $cache : 'desconocido',
+                        'cache' => wp_remote_retrieve_header($res, 'x-litespeed-cache') ?: 'desconocido',
                     );
                     break;
                 }
             }
         }
 
-        $previous = get_option(self::OPT_STATUS, array());
+        $prev    = get_option(self::OPT_STATUS, array());
+        $history = isset($prev['history']) && is_array($prev['history']) ? $prev['history'] : array();
+        $purges  = isset($prev['purges']) ? (int) $prev['purges'] : 0;
+
+        if (empty($problems)) {
+            // Se resolvió (solo o tras la purga anterior). Silencio: no hubo impacto
+            // para nadie, así que no hay nada que contarle a una persona.
+            if (!empty($prev['problems'])) {
+                $history[] = array(
+                    'time'   => current_time('mysql'),
+                    'evento' => 'resuelto',
+                    'urls'   => count($prev['problems']),
+                );
+            }
+
+            update_option(self::OPT_STATUS, array(
+                'time'     => current_time('mysql'),
+                'checked'  => $checked,
+                'problems' => array(),
+                'streak'   => 0,
+                'purges'   => $purges,
+                'notified' => false,
+                'history'  => array_slice($history, -10),
+            ));
+            return;
+        }
+
+        $streak = (isset($prev['streak']) ? (int) $prev['streak'] : 0) + 1;
+
+        // Purga solo las páginas afectadas. purge_all() vaciaba la caché del sitio
+        // entero cada vez: para un problema sin impacto en el cliente, el remedio
+        // salía más caro que la enfermedad.
+        $this->purge_urls(wp_list_pluck($problems, 'url'));
+        $purges++;
+
+        $history[] = array(
+            'time'   => current_time('mysql'),
+            'evento' => 'purga',
+            'urls'   => count($problems),
+        );
+
+        // Solo se avisa si persiste varias pasadas Y los correos están activados.
+        // Por defecto están apagados: esto se auto-repara y no bloquea ninguna venta.
+        $notified = isset($prev['notified']) ? (bool) $prev['notified'] : false;
+
+        if (!$notified && $streak >= self::ALERT_AFTER && $this->notifications_enabled()) {
+            $this->notify($problems, $streak);
+            $notified = true;
+        }
 
         update_option(self::OPT_STATUS, array(
             'time'     => current_time('mysql'),
             'checked'  => $checked,
             'problems' => $problems,
+            'streak'   => $streak,
+            'purges'   => $purges,
+            'notified' => $notified,
+            'history'  => array_slice($history, -10),
         ));
-
-        if (empty($problems)) {
-            return;
-        }
-
-        $purged   = $this->purge_cache();
-        $resolved = $purged ? $this->recheck($problems) : false;
-
-        update_option(self::OPT_STATUS, array(
-            'time'     => current_time('mysql'),
-            'checked'  => $checked,
-            'problems' => $resolved ? array() : $problems,
-            'last_fix' => current_time('mysql'),
-            'fixes'    => (int) (isset($previous['fixes']) ? $previous['fixes'] : 0) + ($resolved ? 1 : 0),
-            'resolved' => $resolved,
-        ));
-
-        // Solo se avisa si la purga NO resolvió. Que un nonce caduque es rutina:
-        // el tick dura 12 h y la caché hasta 7 días, así que pasa a diario y el
-        // front ya reintenta solo. Avisar de cada caso sería ruido garantizado.
-        // Lo que sí merece una persona mirando es que el arreglo no funcione.
-        if (!$resolved) {
-            $this->notify($problems, $purged);
-        }
     }
 
-    /**
-     * Purga la caché de LiteSpeed.
-     *
-     * Se usa el método estático y no do_action('litespeed_purge_all'): el hook
-     * informa de éxito pero deja páginas en "hit" con objetos de horas —
-     * comprobado en producción—, mientras que Purge::purge_all() sí deja la
-     * caché en "miss".
-     */
-    private function purge_cache() {
-        if (class_exists('LiteSpeed\Purge') && method_exists('LiteSpeed\Purge', 'purge_all')) {
-            LiteSpeed\Purge::purge_all('collar nonce watchdog');
-            return true;
-        }
-
-        if (has_action('litespeed_purge_all')) {
-            do_action('litespeed_purge_all');
-            return true;
-        }
-
-        return false;
+    /** Los avisos por correo están desactivados salvo que se pidan expresamente. */
+    public function notifications_enabled() {
+        return get_option(self::OPT_NOTIFY, '') === '1';
     }
 
-    /**
-     * Vuelve a pedir las páginas para confirmar que la purga surtió efecto. Sin
-     * esto el aviso afirmaría haber arreglado algo sin comprobarlo.
-     */
-    private function recheck($problems) {
-        foreach ($problems as $p) {
-            $res = wp_remote_get($p['url'], array(
-                'timeout'   => 20,
-                'sslverify' => false,
-            ));
+    /** Purga solo las URLs indicadas, sin tocar el resto de la caché del sitio. */
+    private function purge_urls($urls) {
+        if (!class_exists('LiteSpeed\Purge')) {
+            return false;
+        }
 
-            if (is_wp_error($res) || wp_remote_retrieve_response_code($res) !== 200) {
-                return false;
-            }
-
-            foreach ($this->extract_nonces(wp_remote_retrieve_body($res)) as $nonce) {
-                if (!wp_verify_nonce($nonce, self::NONCE_ACTION)) {
-                    return false;
-                }
+        foreach (array_unique($urls) as $url) {
+            if (method_exists('LiteSpeed\Purge', 'purge_url')) {
+                LiteSpeed\Purge::purge_url($url);
             }
         }
 
         return true;
     }
 
-    private function notify($problems, $purged) {
+    private function notify($problems, $streak) {
         $lines = array(
-            'El vigilante detectó páginas cacheadas con un nonce vencido y NO pudo repararlo solo.',
+            'El vigilante lleva varias horas detectando páginas cacheadas con un nonce vencido',
+            'sin conseguir resolverlo.',
             '',
         );
 
-        $lines[] = $purged
-            ? 'Se purgó la caché, pero al volver a revisar las páginas el nonce seguía vencido.'
-            : 'No se pudo purgar la caché: LiteSpeed no está disponible o cambió su API.';
+        $lines[] = sprintf('Lleva %d revisiones seguidas sin resolverse pese a purgar las páginas.', $streak);
 
         $lines[] = '';
         $lines[] = 'Impacto para el cliente: ninguno inmediato. El configurador pide un nonce fresco';
