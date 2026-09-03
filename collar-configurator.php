@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Configurador de Collar
  * Description: Configurador interactivo de collares personalizados con WooCommerce. Integra precios server-side, panel de pedidos con visualización de charms, correos enriquecidos, garantía de notificación de pedidos al admin y página de gracias personalizada.
- * Version: 1.6.2
+ * Version: 1.7.1
  * Author: Guapolove
  * Requires at least: 5.0
  * Requires PHP: 7.2
@@ -223,6 +223,21 @@ class CollarConfiguratorAJAX {
         // Página de gracias personalizada (preview + tracking de llegada después de Bold/Addi)
         add_action('woocommerce_thankyou', array($this, 'render_thankyou_collar_preview'), 5, 1);
 
+        // La página de gracias lleva el número de pedido DENTRO del enlace de WhatsApp.
+        // Si el borde la cachea, el siguiente cliente abre el chat con el pedido ajeno,
+        // Pancake lo asocia al cliente equivocado y encima se filtra el dato. Obligatorio.
+        add_action('woocommerce_thankyou', array($this, 'no_edge_cache_thankyou'), 1);
+
+        // Invitación a seguir el pedido por WhatsApp, también en el correo del cliente
+        // (rescata al que cierra la pestaña de gracias sin tocar el botón).
+        add_action('woocommerce_email_after_order_table', array($this, 'render_whatsapp_cta_in_email'), 15, 4);
+
+        // Registro del clic en el botón de WhatsApp. Sin nonce a propósito: esta página
+        // puede llegar cacheada y un nonce vencido devolvería 403; la order_key ya viaja
+        // en la URL del pedido y sirve de credencial para este único uso.
+        add_action('wp_ajax_collar_wa_click',        array($this, 'ajax_track_whatsapp_click'));
+        add_action('wp_ajax_nopriv_collar_wa_click', array($this, 'ajax_track_whatsapp_click'));
+
         // Garantía de notificación al admin para TODOS los pedidos pagados (Bold, Addi,
         // etc.). El correo nativo "Nuevo pedido" no se completa en el request del webhook
         // de Bold (verificado en producción: ningún pedido real tiene el marcador
@@ -339,7 +354,7 @@ class CollarConfiguratorAJAX {
             'nacional' => array('label' => 'Nivel Nacional',       'eta' => '4–5 días hábiles'),
             'recoger'  => array('label' => 'Pasar a recoger',      'eta' => 'Te avisamos cuando esté listo'),
         );
-        $wa = $this->get_whatsapp_contact_data('Hola, acabo de hacer un pedido (#' . $order_id . ') y quisiera consultar algo.');
+        $wa = $this->get_whatsapp_contact_data($this->get_order_whatsapp_message($order));
 
         // Reunir collares de la orden
         $collars = array();
@@ -358,11 +373,50 @@ class CollarConfiguratorAJAX {
         }
 
         ?>
+        <style id="collar-thankyou-style">
+        /* El bloque va todo en estilos inline, asi que aqui hace falta !important
+           para poder pisarlos. En movil el boton pasa a ocupar el ancho completo:
+           como inline-flex se encoge al contenido, a 320px le quedaban ~142px de
+           texto y el copy caia en cuatro lineas dentro de un boton angosto. */
+        @media (max-width: 480px) {
+            .collar-thankyou   { padding: 16px !important; }
+            .collar-wa-cta     { padding: 16px !important; }
+            .collar-wa-cta-btn {
+                display: flex !important;
+                width: 100%;
+                box-sizing: border-box;
+                padding: 14px 12px !important;
+                font-size: 15px !important;
+            }
+        }
+        .collar-wa-cta-btn:focus-visible {
+            outline: 3px solid #075E54;
+            outline-offset: 2px;
+        }
+        </style>
         <div class="collar-thankyou" style="margin:30px 0;padding:24px;background:linear-gradient(135deg,#fdeef8 0%,#fef3c7 100%);border-radius:12px;border:1px solid #f9d6e9;">
             <div style="text-align:center;margin-bottom:24px;">
                 <div style="font-size:48px;line-height:1;">🐾✨</div>
                 <h2 style="margin:8px 0 4px;font-family:'Bebas Neue',sans-serif;font-size:32px;color:#c90278;letter-spacing:1px;">¡Gracias por tu compra!</h2>
                 <p style="margin:0;color:#374151;font-size:15px;">Tu pedido <strong>#<?php echo esc_html($order_id); ?></strong> ya está en nuestras manos. Pronto vas a tener un collar único para tu peludo.</p>
+            </div>
+
+            <div class="collar-wa-cta" style="background:#fff;border:2px solid #25D366;border-radius:12px;padding:20px;margin-bottom:20px;text-align:center;">
+                <p style="margin:0 0 16px;color:#111;font-size:16px;line-height:1.55;">
+                    ¡Recibimos tu pedido! 💛🐾 Escríbenos por WhatsApp para acompañarte durante el proceso y enviarte fotos de cómo va quedando el collar de tu guapo.
+                </p>
+                <a class="collar-wa-cta-btn"
+                   href="<?php echo esc_url($wa['url']); ?>"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   data-order="<?php echo esc_attr($order_id); ?>"
+                   data-key="<?php echo esc_attr($order->get_order_key()); ?>"
+                   style="display:inline-flex;align-items:center;justify-content:center;gap:10px;background:#25D366;color:#fff;padding:15px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px;line-height:1.3;box-shadow:0 2px 8px rgba(37,211,102,.35);">
+                    Quiero recibir los avances por WhatsApp 💛
+                </a>
+                <p style="margin:14px 0 0;color:#6b7280;font-size:13px;">
+                    Te abrimos el chat con el mensaje listo. Solo tienes que enviarlo.
+                </p>
             </div>
 
             <?php if (!empty($collars)): ?>
@@ -414,14 +468,119 @@ class CollarConfiguratorAJAX {
                 </div>
             <?php endif; ?>
 
-            <div style="background:#fff;border-radius:10px;padding:14px 18px;display:flex;flex-direction:column;gap:8px;">
-                <div style="font-weight:700;color:#111;">¿Tienes alguna duda o quieres coordinar la entrega?</div>
-                <a href="<?php echo esc_url($wa['url']); ?>" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;align-self:flex-start;background:#25D366;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;">
-                    💬 Escríbenos por WhatsApp
-                </a>
+            <div style="background:#fff;border-radius:10px;padding:14px 18px;">
+                <div style="font-weight:700;color:#111;margin-bottom:4px;">¿Tienes alguna duda o quieres coordinar la entrega?</div>
+                <div style="color:#6b7280;font-size:14px;">
+                    Escríbenos al <a href="<?php echo esc_url($wa['url']); ?>" target="_blank" rel="noopener noreferrer" style="color:#128C7E;font-weight:600;text-decoration:none;"><?php echo esc_html($wa['display']); ?></a>
+                </div>
             </div>
         </div>
+        <script>
+        (function () {
+            var btn = document.querySelector('.collar-wa-cta-btn');
+            if (!btn || !navigator.sendBeacon) return;
+            btn.addEventListener('click', function () {
+                // Se dispara al salir hacia WhatsApp: sendBeacon sobrevive a la navegación.
+                // Sin nonce (ver el hook): la order_key es la credencial.
+                try {
+                    navigator.sendBeacon(<?php echo wp_json_encode(admin_url('admin-ajax.php')); ?>,
+                        new URLSearchParams({
+                            action: 'collar_wa_click',
+                            order_id: btn.dataset.order,
+                            order_key: btn.dataset.key
+                        }));
+                } catch (e) {}
+            }, { once: true });
+        })();
+        </script>
         <?php
+    }
+
+    /**
+     * Mensaje que llevará pre-escrito el chat de WhatsApp.
+     *
+     * Lo envía el cliente, no nosotros: eso abre la ventana de servicio de 24 h de la
+     * WhatsApp API y permite que Pancake asocie la conversación con los pedidos que ya
+     * hizo desde la web (empareja por número de teléfono). El número de pedido va en el
+     * texto como red de seguridad, para cuando el cliente escribe desde una línea
+     * distinta a la que registró en el checkout y el emparejamiento automático falla.
+     */
+    private function get_order_whatsapp_message($order) {
+        if (!$order) return '';
+
+        $name = trim((string) $order->get_billing_first_name());
+        $who  = $name !== '' ? ' Soy ' . $name . '.' : '';
+
+        return '¡Hola! 💛 Acabo de hacer mi pedido #' . $order->get_id() . ' en la página.'
+             . $who
+             . ' Quiero recibir por aquí los avances del collar de mi guapo. 🐾';
+    }
+
+    /**
+     * Impide que el borde (LiteSpeed en este hosting) guarde la página de gracias.
+     *
+     * No es una optimización: el enlace de WhatsApp que imprimimos ahí lleva embebido el
+     * número de pedido y el nombre del cliente. Una copia cacheada se la serviría tal cual
+     * al siguiente comprador.
+     */
+    public function no_edge_cache_thankyou() {
+        if (!headers_sent()) {
+            header('X-LiteSpeed-Cache-Control: no-cache');
+            nocache_headers();
+        }
+        if (!defined('DONOTCACHEPAGE')) {
+            define('DONOTCACHEPAGE', true);
+        }
+    }
+
+    /**
+     * Deja constancia en el pedido de que el cliente sí abrió el chat de WhatsApp.
+     *
+     * Sirve para medir cuántos entran al canal y para que quien atiende en Pancake sepa
+     * que ese cliente venía de la página de gracias. Se valida con la order_key en vez de
+     * un nonce porque la página de gracias puede llegar cacheada y un nonce vencido
+     * devolvería 403 justo en el momento del clic.
+     */
+    public function ajax_track_whatsapp_click() {
+        $order_id  = isset($_POST['order_id'])  ? absint($_POST['order_id']) : 0;
+        $order_key = isset($_POST['order_key']) ? sanitize_text_field(wp_unslash($_POST['order_key'])) : '';
+
+        if (!$order_id || $order_key === '') {
+            wp_send_json_error(array('message' => 'Datos incompletos.'), 400);
+        }
+
+        $order = wc_get_order($order_id);
+        if (!$order || !hash_equals((string) $order->get_order_key(), $order_key)) {
+            wp_send_json_error(array('message' => 'Pedido no válido.'), 403);
+        }
+
+        // Solo la primera vez: no queremos una nota por cada clic.
+        if (!$order->get_meta('_collar_wa_click_at')) {
+            $order->update_meta_data('_collar_wa_click_at', current_time('mysql'));
+            $order->add_order_note('💬 El cliente abrió el chat de WhatsApp desde la página de gracias.');
+            $order->save();
+        }
+
+        wp_send_json_success();
+    }
+
+    /**
+     * Misma invitación a WhatsApp dentro del correo del pedido, solo para el cliente.
+     */
+    public function render_whatsapp_cta_in_email($order, $sent_to_admin, $plain_text, $email) {
+        if ($sent_to_admin || $plain_text || !$order) return;
+
+        $wa = $this->get_whatsapp_contact_data($this->get_order_whatsapp_message($order));
+
+        echo '<div style="margin:24px 0;padding:20px;background:#f0fdf4;border:2px solid #25D366;border-radius:8px;text-align:center;">'
+           . '<p style="margin:0 0 16px;color:#111;font-size:15px;line-height:1.55;">'
+           . '¡Recibimos tu pedido! 💛🐾 Escríbenos por WhatsApp para acompañarte durante el proceso y enviarte fotos de cómo va quedando el collar de tu guapo.'
+           . '</p>'
+           . '<a href="' . esc_url($wa['url']) . '" target="_blank" rel="noopener noreferrer" '
+           . 'style="display:inline-block;background:#25D366;color:#ffffff;padding:14px 26px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;">'
+           . 'Quiero recibir los avances por WhatsApp 💛'
+           . '</a>'
+           . '</div>';
     }
 
     /**
