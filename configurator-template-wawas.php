@@ -261,16 +261,6 @@
                             <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_688B8955-0E94-419F-88C1-9E23283D68A6.png" alt="" />
                         </button>
                         <button class="collar-thumb-btn"
-                                data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_CCE6A1B8-8489-488D-B79E-FFB279D844C3.png"
-                                onclick="setCollarPhoto(this)" type="button">
-                            <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_CCE6A1B8-8489-488D-B79E-FFB279D844C3.png" alt="" />
-                        </button>
-                        <button class="collar-thumb-btn"
-                                data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_0E81D7C0-676A-41DA-BB74-8F35EC4327A9.png"
-                                onclick="setCollarPhoto(this)" type="button">
-                            <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_0E81D7C0-676A-41DA-BB74-8F35EC4327A9.png" alt="" />
-                        </button>
-                        <button class="collar-thumb-btn"
                                 data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_688B8955-0E94-419F-88C1-9E23283D68A6.png"
                                 onclick="setCollarPhoto(this)" type="button">
                             <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_688B8955-0E94-419F-88C1-9E23283D68A6.png" alt="" />
@@ -306,7 +296,7 @@
                     </div>
                     <div class="tip-item">
                         <span class="tip-icon">✨</span>
-                        <p>Más de 6 charms tienen un costo adicional: <strong>+$3.000 (XS)</strong> / <strong>+$4.000 (otros tamaños)</strong> por cada charm extra.</p>
+                        <p>Más de 6 charms tienen un costo adicional: <strong>+$4.000</strong> por cada charm extra.</p>
                     </div>
                     <div class="tip-item">
                         <span class="tip-icon">🐾</span>
@@ -359,10 +349,6 @@
                         <strong>Paso 1:</strong> Tamaño del collar
                     </h4>
                     <div class="size-selector-grid">
-                        <button class="size-option-btn size-xs" onclick="changeCollarSize('xs')" title="Talla XS (para gatos)">
-                            <div class="size-name">🐱 XS</div>
-                            <div class="size-cm">17-29cm</div>
-                        </button>
                         <button class="size-option-btn size-s active" onclick="changeCollarSize('s')">
                             <div class="size-name">S</div>
                             <div class="size-cm">22-40cm</div>
@@ -379,9 +365,6 @@
                             <div class="size-name">XL</div>
                             <div class="size-cm">50-66cm</div>
                         </button>
-                    </div>
-                    <div id="xs-cat-notice" style="display:none;margin-top:10px;padding:10px 14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;font-size:13px;color:#92400e;">
-                        🐱 <strong>Talla para gatos.</strong> Los charms dorados no están disponibles en talla XS.
                     </div>
                 </div>
 
@@ -420,7 +403,7 @@
                         <img src="<?php echo $plugin_url; ?>assets/icons/IMG_6560.jpg.png" alt="" class="step-icon">
                         <strong>Paso 3:</strong> Personaliza tus charms
                     </h4>
-                    <p class="charms-info">Incluye 6 charms. Puedes agregar más (+$3.000 XS / +$4.000 otros tamaños)</p>
+                    <p class="charms-info">Incluye 6 charms. Puedes agregar más (+$4.000 c/u)</p>
                     <div id="charms-limit-msg"></div>
                     
                     <!-- Selector de color de emojis (orden: cálidos → fríos → metálicos) -->

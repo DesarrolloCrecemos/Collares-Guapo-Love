@@ -1269,9 +1269,10 @@ class CollarConfiguratorAJAX {
             return;
         }
 
-        // XS tiene stock limitado de colores de collar (anti-manipulación).
-        if ($collar_size === 'XS' && !in_array($collar_color, self::XS_ALLOWED_COLORS, true)) {
-            wp_send_json_error(array('message' => 'Ese color no está disponible en talla XS. Colores disponibles: Rosa, Rojo y Azul.'));
+        // XS ya no se vende en el personalizador (el Collar Gummy sí conserva XS,
+        // por eso no se quita de ALLOWED_SIZES).
+        if ($collar_size === 'XS') {
+            wp_send_json_error(array('message' => 'La talla XS ya no está disponible. Elige otra talla.'));
             return;
         }
 
