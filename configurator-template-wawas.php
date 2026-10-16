@@ -242,28 +242,18 @@
             <!-- Columna izquierda: Galería de imágenes -->
             <div class="product-image-column">
                 <div class="product-gallery">
-                    <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_EAEB202C-DC9C-45ED-A08C-42EC52E5FEAF.png"
+                    <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_CCE6A1B8-8489-488D-B79E-FFB279D844C3.png"
                          id="collar-main-photo" class="collar-main-img" alt="Collar personalizado" />
                     <div class="collar-thumbs">
                         <button class="collar-thumb-btn active"
-                                data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_EAEB202C-DC9C-45ED-A08C-42EC52E5FEAF.png"
+                                data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_CCE6A1B8-8489-488D-B79E-FFB279D844C3.png"
                                 onclick="setCollarPhoto(this)" type="button">
-                            <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_EAEB202C-DC9C-45ED-A08C-42EC52E5FEAF.png" alt="" />
+                            <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_CCE6A1B8-8489-488D-B79E-FFB279D844C3.png" alt="" />
                         </button>
                         <button class="collar-thumb-btn"
-                                data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_BCE18260-4220-4698-8799-DD8D61E4AF48.png"
+                                data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_0E81D7C0-676A-41DA-BB74-8F35EC4327A9.png"
                                 onclick="setCollarPhoto(this)" type="button">
-                            <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_BCE18260-4220-4698-8799-DD8D61E4AF48.png" alt="" />
-                        </button>
-                        <button class="collar-thumb-btn"
-                                data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_688B8955-0E94-419F-88C1-9E23283D68A6.png"
-                                onclick="setCollarPhoto(this)" type="button">
-                            <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_688B8955-0E94-419F-88C1-9E23283D68A6.png" alt="" />
-                        </button>
-                        <button class="collar-thumb-btn"
-                                data-src="https://guapolove.com/wp-content/uploads/2026/03/instories_688B8955-0E94-419F-88C1-9E23283D68A6.png"
-                                onclick="setCollarPhoto(this)" type="button">
-                            <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_688B8955-0E94-419F-88C1-9E23283D68A6.png" alt="" />
+                            <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_0E81D7C0-676A-41DA-BB74-8F35EC4327A9.png" alt="" />
                         </button>
                     </div>
                 </div>
