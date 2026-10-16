@@ -84,7 +84,8 @@ class CollarNonceWatchdog {
 
         foreach ($pages as $id) {
             $content = get_post_field('post_content', $id);
-            if (has_shortcode($content, 'collar_gummy') || has_shortcode($content, 'collar_configurador')) {
+            if (has_shortcode($content, 'collar_gummy') || has_shortcode($content, 'collar_configurador')
+                || has_shortcode($content, 'guapo_linea')) {
                 $urls[] = get_permalink($id);
             }
         }

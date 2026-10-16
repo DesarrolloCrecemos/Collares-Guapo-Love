@@ -18,6 +18,14 @@ if (!defined('ABSPATH')) {
 // CollarConfiguratorAJAX (definida más abajo) solo en tiempo de ejecución.
 require_once plugin_dir_path(__FILE__) . 'feria-panel.php';
 
+// Visor de catálogos (prendedores, general, ...): páginas públicas de imágenes en
+// /catalogo-*. Módulo aditivo; no interviene el configurador ni WooCommerce.
+require_once plugin_dir_path(__FILE__) . 'catalogo-viewer.php';
+
+// Líneas de producto con variantes (prendedores, pañoletas): productos variables de
+// WooCommerce con página propia [guapo_linea]. Reutiliza el nonce del configurador.
+require_once plugin_dir_path(__FILE__) . 'tienda-lineas.php';
+
 // Vigilante de nonces: detecta páginas cacheadas cuyo nonce ya venció, purga la
 // caché y avisa. Segunda capa sobre el reintento que ya hace el front.
 require_once plugin_dir_path(__FILE__) . 'nonce-watchdog.php';
@@ -179,6 +187,12 @@ class CollarConfiguratorAJAX {
         add_action('wp_footer',                                   array($this, 'render_whatsapp_floating_button'), 99);
         add_action('woocommerce_checkout_process',                array($this, 'validate_shipping_address'));
         add_action('woocommerce_checkout_update_order_meta',      array($this, 'save_shipping_address_to_order'), 10, 2);
+
+        // Todo el envío lo cobra el selector propio (fee). Con un producto físico en el
+        // carrito (Gummy, prendedores, pañoletas) WooCommerce sumaba además sus métodos
+        // nativos de la zona Colombia: el cliente veía las opciones duplicadas y hubo
+        // pedidos con el envío cobrado dos veces (#19540, #19555).
+        add_filter('woocommerce_cart_needs_shipping', '__return_false');
 
         // Calidad de datos en checkout: mejorar campo de celular, agregar confirmación
         // y validar formato (celular colombiano: 10 dígitos que empiezan por 3).
@@ -751,10 +765,10 @@ class CollarConfiguratorAJAX {
     /**
      * Botón flotante global de WhatsApp para contacto rápido.
      */
-    public function render_whatsapp_floating_button() {
+    public function render_whatsapp_floating_button($message = 'Hola, quiero información sobre los collares personalizados.') {
         if (is_admin()) return;
 
-        $wa = $this->get_whatsapp_contact_data('Hola, quiero información sobre los collares personalizados.');
+        $wa = $this->get_whatsapp_contact_data($message);
         $wa_icon_file = 'whatsapp-logo-whatsapp-icon-whatsapp-transparent-free-png.webp';
         $wa_icon_path = plugin_dir_path(__FILE__) . $wa_icon_file;
         $wa_icon_url  = plugin_dir_url(__FILE__) . $wa_icon_file;

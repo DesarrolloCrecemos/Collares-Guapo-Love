@@ -1,0 +1,4 @@
+# Material de origen (lookbooks, exportaciones de Drive): pesado y no lo usa el plugin.
+# Las imágenes que sí se publican viven optimizadas en assets/catalogo-*.
+*.pdf
+WEB - */
