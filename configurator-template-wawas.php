@@ -261,9 +261,9 @@
                             <img src="https://guapolove.com/wp-content/uploads/2026/10/collar-carrusel-3.jpeg" alt="" />
                         </button>
                         <button class="collar-thumb-btn"
-                                data-src="https://guapolove.com/wp-content/uploads/2026/10/collar-carrusel-2.jpeg"
+                                data-src="https://guapolove.com/wp-content/uploads/2026/10/collar-carrusel-2-v2.jpeg"
                                 onclick="setCollarPhoto(this)" type="button">
-                            <img src="https://guapolove.com/wp-content/uploads/2026/10/collar-carrusel-2.jpeg" alt="" />
+                            <img src="https://guapolove.com/wp-content/uploads/2026/10/collar-carrusel-2-v2.jpeg" alt="" />
                         </button>
                         <button class="collar-thumb-btn"
                                 data-src="https://guapolove.com/wp-content/uploads/2026/10/collar-carrusel-4.jpeg"
