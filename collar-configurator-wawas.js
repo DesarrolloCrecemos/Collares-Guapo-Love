@@ -709,7 +709,8 @@ function setCollarPhoto(btn) {
 }
 
 // El visor es un cuadro 1:1 con object-fit: cover; las fotos que no son cuadradas
-// (collages horizontales o verticales) se muestran completas en vez de recortarse.
+// se muestran completas en vez de recortarse. Las horizontales toman su propia
+// proporción: dentro del cuadro quedaban bandas grises que parecían un corte.
 (function() {
     const init = function() {
         const mainPhoto = document.getElementById('collar-main-photo');
@@ -717,7 +718,9 @@ function setCollarPhoto(btn) {
         const fit = function() {
             if (!mainPhoto.naturalWidth) return;
             const ratio = mainPhoto.naturalWidth / mainPhoto.naturalHeight;
-            mainPhoto.style.objectFit = Math.abs(ratio - 1) > 0.05 ? 'contain' : 'cover';
+            const square = Math.abs(ratio - 1) <= 0.05;
+            mainPhoto.style.aspectRatio = ratio > 1.05 ? String(ratio) : '';
+            mainPhoto.style.objectFit = square || ratio > 1.05 ? 'cover' : 'contain';
         };
         mainPhoto.addEventListener('load', fit);
         if (mainPhoto.complete) fit();
