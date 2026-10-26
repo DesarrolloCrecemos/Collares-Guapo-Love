@@ -708,6 +708,24 @@ function setCollarPhoto(btn) {
     if (mainPhoto) mainPhoto.src = btn.dataset.src;
 }
 
+// El visor es un cuadro 1:1 con object-fit: cover; las fotos que no son cuadradas
+// (collages horizontales o verticales) se muestran completas en vez de recortarse.
+(function() {
+    const init = function() {
+        const mainPhoto = document.getElementById('collar-main-photo');
+        if (!mainPhoto) return;
+        const fit = function() {
+            if (!mainPhoto.naturalWidth) return;
+            const ratio = mainPhoto.naturalWidth / mainPhoto.naturalHeight;
+            mainPhoto.style.objectFit = Math.abs(ratio - 1) > 0.05 ? 'contain' : 'cover';
+        };
+        mainPhoto.addEventListener('load', fit);
+        if (mainPhoto.complete) fit();
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+})();
+
 // Función: Actualizar sección bundle según el tamaño del collar
 function updateBundleDisplay() {
     var xsOffer    = document.getElementById('bundle-xs-offer');
