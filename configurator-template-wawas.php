@@ -255,6 +255,21 @@
                                 onclick="setCollarPhoto(this)" type="button">
                             <img src="https://guapolove.com/wp-content/uploads/2026/03/instories_0E81D7C0-676A-41DA-BB74-8F35EC4327A9.png" alt="" />
                         </button>
+                        <button class="collar-thumb-btn"
+                                data-src="https://guapolove.com/wp-content/uploads/2026/10/collar-carrusel-3.jpeg"
+                                onclick="setCollarPhoto(this)" type="button">
+                            <img src="https://guapolove.com/wp-content/uploads/2026/10/collar-carrusel-3.jpeg" alt="" />
+                        </button>
+                        <button class="collar-thumb-btn"
+                                data-src="https://guapolove.com/wp-content/uploads/2026/10/collar-carrusel-2.jpeg"
+                                onclick="setCollarPhoto(this)" type="button">
+                            <img src="https://guapolove.com/wp-content/uploads/2026/10/collar-carrusel-2.jpeg" alt="" />
+                        </button>
+                        <button class="collar-thumb-btn"
+                                data-src="https://guapolove.com/wp-content/uploads/2026/10/collar-carrusel-4.jpeg"
+                                onclick="setCollarPhoto(this)" type="button">
+                            <img src="https://guapolove.com/wp-content/uploads/2026/10/collar-carrusel-4.jpeg" alt="" />
+                        </button>
                     </div>
                 </div>
                 

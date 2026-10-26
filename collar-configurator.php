@@ -3300,7 +3300,7 @@ function collares_home_shortcode($atts) {
     // Imagen + precio del configurador
     $collar_img = $collar_id ? get_the_post_thumbnail_url($collar_id, 'large') : '';
     if (!$collar_img) {
-        $collar_img = 'https://guapolove.com/wp-content/uploads/2026/03/instories_EAEB202C-DC9C-45ED-A08C-42EC52E5FEAF.png';
+        $collar_img = 'https://guapolove.com/wp-content/uploads/2026/03/instories_CCE6A1B8-8489-488D-B79E-FFB279D844C3.png';
     }
     // Imagen del Gummy
     $gummy_img = '';
