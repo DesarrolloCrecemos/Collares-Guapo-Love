@@ -3152,7 +3152,7 @@ function collar_gummy_shortcode() {
             <?php if (!empty($product_desc)): ?>
                 <div class="gummy-desc"><?php echo wp_kses_post($product_desc); ?></div>
             <?php else: ?>
-                <p class="gummy-desc">Collar con diseño gummy y charms decorativos incluidos. Disponible en diferentes tallas para tu mascota.</p>
+                <p class="gummy-desc">Collar con diseño gummy y charms decorativos incluidos. Disponible en diferentes tallas para tu peludo.</p>
             <?php endif; ?>
 
             <span class="gummy-size-label">Talla del collar</span>
@@ -3471,7 +3471,7 @@ function collares_home_shortcode($atts) {
                 <div class="collar-card-body">
                     <span class="collar-card-tag" style="background:#fef3c7;color:#92400e;border-color:#fde68a;">🍬 Charms incluidos</span>
                     <h3 class="collar-card-title">Collar Gummy</h3>
-                    <p class="collar-card-desc">Diseño divertido con charms decorativos ya incluidos. Disponible en varias tallas para tu mascota.</p>
+                    <p class="collar-card-desc">Diseño divertido con charms decorativos ya incluidos. Disponible en varias tallas para tu peludo.</p>
                     <div class="collar-card-price">$49.900 <small>COP</small></div>
                     <a href="<?php echo esc_url($gummy_url ?: '#'); ?>" class="collar-card-btn">Comprar Gummy</a>
                 </div>
