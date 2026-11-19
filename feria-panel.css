@@ -477,7 +477,7 @@ button { font-family: inherit; cursor: pointer; }
 .feria-actions {
     flex: 0 0 auto;
     display: grid;
-    grid-template-columns: 1fr 2fr;
+    grid-template-columns: 1fr 1.4fr 1.4fr;
     gap: 10px;
     margin-top: auto;
     padding-top: 4px;
@@ -516,6 +516,101 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .feria-btn-block { width: 100%; }
+
+/* Verde WhatsApp: el botón que manda el link al cliente. */
+.feria-btn-whatsapp {
+    background: #1fa855;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    text-decoration: none;
+}
+.feria-btn-whatsapp:active { background: #178a45; }
+
+/* =========================================================================
+   Cajón: link de pago
+   ========================================================================= */
+
+.feria-pay-form,
+.feria-pay-result { display: flex; flex-direction: column; gap: 14px; }
+
+.feria-pay-form[hidden],
+.feria-pay-result[hidden],
+.feria-pay-fields[hidden],
+.feria-pay-row[hidden],
+.feria-drawer-foot .feria-btn[hidden] { display: none; }
+
+.feria-pay-summary {
+    background: var(--feria-bg);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.45;
+}
+.feria-pay-summary strong { display: block; font-size: 15px; }
+
+.feria-pay-zones { border: none; margin: 0; padding: 0; min-width: 0; }
+.feria-pay-zones legend,
+.feria-pay-total span {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--feria-muted);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    padding: 0;
+    margin-bottom: 6px;
+}
+
+.feria-pay-zone {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 0 14px;
+    margin-bottom: 6px;
+    border: 2px solid var(--feria-line);
+    border-radius: 10px;
+    font-size: 15px;
+    cursor: pointer;
+}
+.feria-pay-zone input { accent-color: var(--feria-accent); width: 18px; height: 18px; margin: 0; }
+.feria-pay-zone span { flex: 1; }
+.feria-pay-zone.is-active { border-color: var(--feria-accent); }
+
+.feria-pay-fields { display: flex; flex-direction: column; gap: 10px; }
+.feria-pay-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.feria-pay-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-top: 1px solid var(--feria-line);
+    padding-top: 12px;
+}
+.feria-pay-total small {
+    display: block;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    margin-top: 2px;
+}
+.feria-pay-total strong { font-size: 22px; color: var(--feria-accent); }
+
+.feria-pay-error { margin: 0 0 10px; color: #dc2626; font-size: 14px; font-weight: 600; }
+.feria-pay-error:empty { display: none; }
+
+.feria-pay-ok { margin: 0; font-size: 18px; }
+.feria-pay-result-total { margin: 0; font-size: 15px; }
+.feria-pay-result-total strong { color: var(--feria-accent); font-size: 18px; }
+.feria-pay-result .feria-field input { font-size: 14px; background: var(--feria-bg); }
+
+.feria-pay-share { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
+
+.feria-pay-hint { margin: 0; font-size: 13px; color: var(--feria-muted); line-height: 1.45; }
+
+.feria-card-order { font-size: 12.5px; font-weight: 600; color: #178a45; margin: -2px 0 8px; }
 
 /* =========================================================================
    Bloques de control
@@ -821,6 +916,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .feria-card-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.feria-card-actions.has-order { grid-template-columns: repeat(4, 1fr); }
 
 .feria-card-btn {
     min-height: 40px;
@@ -1093,8 +1189,11 @@ button { font-family: inherit; cursor: pointer; }
     .feria-charm-color  { width: 40px; height: 40px; }
     .feria-size-btn     { height: 46px; font-size: 15px; }
 
-    .feria-card-actions { grid-template-columns: 1fr 1fr; }
+    .feria-card-actions,
+    .feria-card-actions.has-order { grid-template-columns: 1fr 1fr; }
     .feria-drawer       { width: 100%; max-width: 100%; }
+    .feria-pay-row,
+    .feria-pay-share    { grid-template-columns: 1fr; }
 }
 
 /* Muy estrecho (iPhone SE y similares): con tres botones el rótulo queda en

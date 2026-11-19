@@ -547,6 +547,9 @@
             charms:    state.charms.slice(),
             price:     calcPrice(state.size, count),
             completa:  count >= cfg.minCharms,
+            // Pedido de WooCommerce creado con "Link de pago". Se conserva al corregir
+            // la ficha para no perder el link que ya tiene el cliente.
+            order:     previous && previous.order ? previous.order : null,
             customer: {
                 pet:   $('feria-pet').value.trim(),
                 name:  $('feria-name').value.trim(),
@@ -667,14 +670,26 @@
                 (f.customer.phone ? ' · ' + f.customer.phone : '');
             card.appendChild(meta);
 
-            var actions = document.createElement('div');
-            actions.className = 'feria-card-actions';
+            if (f.order) {
+                var order = document.createElement('div');
+                order.className = 'feria-card-order';
+                order.textContent = 'Link de pago · pedido #' + f.order.number + ' · ' + money(f.order.total);
+                card.appendChild(order);
+            }
 
-            [
+            var actions = document.createElement('div');
+            actions.className = 'feria-card-actions' + (f.order ? ' has-order' : '');
+
+            var defs = [
                 ['Abrir',    function () { editFicha(f.id); },      ''],
                 ['Copiar',   function () { duplicateFicha(f.id); }, ''],
                 ['Borrar',   function () { deleteFicha(f.id); },    'is-danger']
-            ].forEach(function (def) {
+            ];
+            if (f.order && f.order.waUrl) {
+                defs.splice(2, 0, ['Reenviar', function () { window.open(f.order.waUrl, '_blank', 'noopener'); }, '']);
+            }
+
+            defs.forEach(function (def) {
                 var b = document.createElement('button');
                 b.type = 'button';
                 b.className = 'feria-card-btn ' + def[2];
@@ -1092,7 +1107,7 @@
     function buildCSV() {
         var rows = [[
             'ID', 'Fecha', 'Evento', 'Peludo', 'Cliente', 'WhatsApp',
-            'Talla', 'Color', 'Charms', 'Diseño', 'Cotización', 'Completa', 'Notas'
+            'Talla', 'Color', 'Charms', 'Diseño', 'Cotización', 'Completa', 'Notas', 'Pedido'
         ]];
 
         fichas.forEach(function (f) {
@@ -1109,7 +1124,8 @@
                 f.charms.map(charmLabel).join(' | '),
                 f.completa ? f.price : '',
                 f.completa ? 'Sí' : 'No',
-                f.customer.notes
+                f.customer.notes,
+                f.order ? '#' + f.order.number : ''
             ]);
         });
 
@@ -1341,11 +1357,259 @@
     }
 
     function closeDrawers() {
-        ['feria-drawer', 'feria-menu'].forEach(function (id) {
+        ['feria-drawer', 'feria-menu', 'feria-pay'].forEach(function (id) {
             $(id).classList.remove('is-open');
             $(id).setAttribute('aria-hidden', 'true');
         });
         $('feria-scrim').hidden = true;
+
+        // Cerrar después de crear el link equivale a "Armar otro collar": el diseño
+        // ya quedó en un pedido y en su ficha, dejarlo en pantalla invita a duplicarlo.
+        if (pay.done) finishPay();
+    }
+
+    /* ---------------------------------------------------------------------
+     * Link de pago (venta por WhatsApp)
+     *
+     * Lo único del panel que necesita internet: crea un pedido pendiente en
+     * WooCommerce y devuelve la página de pago. El precio lo recalcula el servidor;
+     * el total que se ve aquí es solo la cotización.
+     * ------------------------------------------------------------------ */
+
+    var pay = { zone: '', busy: false, done: false };
+
+    function phoneDigits(v) {
+        return String(v || '').replace(/\D+/g, '');
+    }
+
+    function shippingOptions() {
+        return cfg.shipping || {};
+    }
+
+    function buildPayZones() {
+        var host = $('feria-pay-zones');
+        host.innerHTML = '';
+        var opts = shippingOptions();
+
+        Object.keys(opts).forEach(function (key) {
+            var o = opts[key];
+            var label = document.createElement('label');
+            label.className = 'feria-pay-zone';
+            label.dataset.zone = key;
+            label.innerHTML = '<input type="radio" name="feria-pay-zone"><span></span><strong></strong>';
+            label.querySelector('input').value = key;
+            // Las etiquetas de la tienda empiezan con "Envío Deprisa · "; en el cajón sobra.
+            label.querySelector('span').textContent = o.label.replace(/^Envío Deprisa · /, '');
+            label.querySelector('strong').textContent = o.cost > 0 ? money(o.cost) : 'Gratis';
+            label.querySelector('input').addEventListener('change', function () { setPayZone(key); });
+            host.appendChild(label);
+        });
+    }
+
+    function setPayZone(zone) {
+        pay.zone = zone;
+        Array.prototype.forEach.call($('feria-pay-zones').children, function (el) {
+            var on = el.dataset.zone === zone;
+            el.classList.toggle('is-active', on);
+            el.querySelector('input').checked = on;
+        });
+        $('feria-pay-address').hidden = !zone || zone === 'recoger';
+        $('feria-pay-citystate').hidden = zone !== 'nacional';
+        paintPayTotal();
+    }
+
+    function paintPayTotal() {
+        var price = calcPrice(state.size, state.charms.length);
+        var opt   = shippingOptions()[pay.zone];
+        var ship  = opt ? opt.cost : 0;
+        $('feria-pay-total').textContent = money(price + ship);
+
+        var note = opt ? (ship > 0 ? 'collar + envío' : 'recoge en tienda') : 'sin envío';
+        if ($('feria-pay-coupon').value.trim()) note += ' · el cupón se descuenta al crear';
+        $('feria-pay-total-note').textContent = note;
+    }
+
+    /** El error va en el pie, junto al botón: dentro del formulario quedaba fuera de vista. */
+    function payError(msg) {
+        $('feria-pay-error').textContent = msg || '';
+    }
+
+    /** Lo mínimo para cobrar: diseño completo, nombre y WhatsApp del cliente. */
+    function openPay() {
+        var count = state.charms.length;
+        if (count < cfg.minCharms) {
+            toast('El collar necesita al menos ' + cfg.minCharms + ' charms para cobrarlo.', true);
+            return;
+        }
+        if (!$('feria-name').value.trim()) {
+            toast('Escribe el nombre del cliente.', true);
+            $('feria-name').focus();
+            return;
+        }
+        if (phoneDigits($('feria-phone').value).length < 10) {
+            toast('Escribe el WhatsApp del cliente (10 dígitos).', true);
+            $('feria-phone').focus();
+            return;
+        }
+
+        var color = state.collarColor.label;
+        var pet   = $('feria-pet').value.trim();
+        $('feria-pay-summary').innerHTML = '<strong></strong><span></span>';
+        $('feria-pay-summary').children[0].textContent =
+            $('feria-name').value.trim() + ' · ' + $('feria-phone').value.trim();
+        $('feria-pay-summary').children[1].textContent =
+            'Collar talla ' + state.size + ' · ' + color + ' · ' + count + ' charms' +
+            (pet ? ' · para ' + pet : '') + ' — ' + money(calcPrice(state.size, count));
+
+        $('feria-pay-form').hidden = false;
+        $('feria-pay-result').hidden = true;
+        $('feria-pay-create').hidden = false;
+        $('feria-pay-new').hidden = true;
+        payError('');
+        setPayZone(pay.zone);
+        openDrawer('feria-pay');
+    }
+
+    function createPayLink() {
+        if (pay.busy) return;
+        payError('');
+
+        if (!pay.zone) {
+            payError('Elige el método de envío.');
+            return;
+        }
+        if (pay.zone !== 'recoger' && !$('feria-pay-street').value.trim()) {
+            payError('Escribe la dirección de envío.');
+            $('feria-pay-street').focus();
+            return;
+        }
+        if (pay.zone === 'nacional' && (!$('feria-pay-city').value.trim() || !$('feria-pay-state').value.trim())) {
+            payError('Para envío nacional escribe la ciudad y el departamento.');
+            return;
+        }
+        if (navigator.onLine === false) {
+            payError('Sin internet. El link de pago necesita conexión; guarda la ficha y créalo después.');
+            return;
+        }
+
+        var payload = {
+            size:   state.size,
+            color:  state.collarColor.label,
+            charms: state.charms,
+            customer: {
+                name:  $('feria-name').value.trim(),
+                phone: $('feria-phone').value.trim(),
+                pet:   $('feria-pet').value.trim(),
+                notes: $('feria-notes').value.trim(),
+                email: $('feria-pay-email').value.trim()
+            },
+            shipping: {
+                zone:    pay.zone,
+                address: $('feria-pay-street').value.trim(),
+                city:    $('feria-pay-city').value.trim(),
+                state:   $('feria-pay-state').value.trim(),
+                barrio:  $('feria-pay-barrio').value.trim()
+            },
+            coupon: $('feria-pay-coupon').value.trim()
+        };
+
+        var body = new FormData();
+        body.append('action', 'collar_feria_create_order');
+        body.append('payload', JSON.stringify(payload));
+
+        pay.busy = true;
+        $('feria-pay-create').disabled = true;
+        $('feria-pay-create').textContent = 'Creando pedido…';
+
+        fetch(cfg.ajaxUrl, { method: 'POST', body: body, credentials: 'same-origin' })
+            .then(function (r) {
+                return r.json().catch(function () { return null; });
+            })
+            .then(function (res) {
+                if (!res || !res.success) {
+                    payError((res && res.data && res.data.message) || 'No se pudo crear el pedido. Intenta de nuevo.');
+                    return;
+                }
+                return showPayResult(res.data);
+            })
+            .catch(function () {
+                payError('Sin conexión con el servidor. Revisa el internet e intenta de nuevo.');
+            })
+            .then(function () {
+                pay.busy = false;
+                $('feria-pay-create').disabled = false;
+                $('feria-pay-create').textContent = 'Crear link de pago';
+            });
+    }
+
+    function showPayResult(d) {
+        pay.done = true;
+
+        $('feria-pay-number').textContent = '#' + d.number;
+        $('feria-pay-result-total').textContent = d.totalText;
+        $('feria-pay-url').value = d.payUrl;
+        $('feria-pay-wa').href = d.waUrl;
+
+        $('feria-pay-form').hidden = true;
+        $('feria-pay-result').hidden = false;
+        $('feria-pay-create').hidden = true;
+        $('feria-pay-new').hidden = false;
+
+        // La venta queda también como ficha: es el registro del vendedor para
+        // reenviar el link o revisar el diseño si el cliente pregunta.
+        var ficha = currentFicha();
+        ficha.order = {
+            id:     d.orderId,
+            number: d.number,
+            url:    d.payUrl,
+            waUrl:  d.waUrl,
+            total:  d.total,
+            zone:   pay.zone
+        };
+
+        return dbRun('readwrite', function (s) { return s.put(ficha); })
+            .then(loadFichas)
+            .catch(function () { toast('El pedido se creó, pero no se pudo guardar la ficha.', true); });
+    }
+
+    function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+        }
+        return new Promise(function (resolve, reject) {
+            var input = $('feria-pay-url');
+            input.value = text;
+            input.select();
+            try { document.execCommand('copy') ? resolve() : reject(); } catch (e) { reject(e); }
+        });
+    }
+
+    function copyPayLink() {
+        copyText($('feria-pay-url').value)
+            .then(function () { toast('Link copiado'); })
+            .catch(function () { toast('No se pudo copiar. Mantén presionado el link para copiarlo.', true); });
+    }
+
+    function finishPay() {
+        pay.done = false;
+        ['feria-pay-street', 'feria-pay-city', 'feria-pay-state', 'feria-pay-barrio',
+         'feria-pay-email', 'feria-pay-coupon'].forEach(function (id) { $(id).value = ''; });
+        setPayZone('');
+        $('feria-pay-form').hidden = false;
+        $('feria-pay-result').hidden = true;
+        $('feria-pay-create').hidden = false;
+        $('feria-pay-new').hidden = true;
+        resetDesign();
+    }
+
+    function bindPay() {
+        buildPayZones();
+        $('feria-open-pay').addEventListener('click', openPay);
+        $('feria-close-pay').addEventListener('click', closeDrawers);
+        $('feria-pay-create').addEventListener('click', createPayLink);
+        $('feria-pay-copy').addEventListener('click', copyPayLink);
+        $('feria-pay-coupon').addEventListener('input', paintPayTotal);
+        $('feria-pay-new').addEventListener('click', closeDrawers);
     }
 
     function wipeData() {
@@ -1447,6 +1711,7 @@
         buildEmojis();
         renderAll();
         bindEvents();
+        bindPay();
         bindViewer();
         paintNetwork();
         registerSW();

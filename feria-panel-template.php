@@ -102,7 +102,8 @@ if (!defined('ABSPATH')) {
 
             <div class="feria-actions">
                 <button type="button" class="feria-btn feria-btn-secondary" id="feria-clear">Limpiar</button>
-                <button type="button" class="feria-btn feria-btn-primary" id="feria-save">Guardar ficha</button>
+                <button type="button" class="feria-btn feria-btn-secondary" id="feria-save">Guardar ficha</button>
+                <button type="button" class="feria-btn feria-btn-primary" id="feria-open-pay">Link de pago</button>
             </div>
         </section>
 
@@ -152,6 +153,89 @@ if (!defined('ABSPATH')) {
             <button type="button" class="feria-btn feria-btn-primary feria-btn-block" id="feria-export">
                 Exportar todo
             </button>
+        </div>
+    </aside>
+
+    <!-- ================= Cajón: link de pago (venta por WhatsApp) ================= -->
+    <aside class="feria-drawer" id="feria-pay" aria-hidden="true">
+        <div class="feria-drawer-head">
+            <h2>Link de pago</h2>
+            <button type="button" class="feria-drawer-close" id="feria-close-pay" aria-label="Cerrar">&times;</button>
+        </div>
+
+        <div class="feria-drawer-body">
+            <div class="feria-pay-form" id="feria-pay-form">
+                <div class="feria-pay-summary" id="feria-pay-summary"></div>
+
+                <fieldset class="feria-pay-zones">
+                    <legend>Envío</legend>
+                    <div id="feria-pay-zones"></div>
+                </fieldset>
+
+                <div class="feria-pay-fields" id="feria-pay-address" hidden>
+                    <div class="feria-field">
+                        <label for="feria-pay-street">Dirección</label>
+                        <input type="text" id="feria-pay-street" autocomplete="off" placeholder="Calle 123 # 45-67, apto 8">
+                    </div>
+                    <div class="feria-pay-row" id="feria-pay-citystate" hidden>
+                        <div class="feria-field">
+                            <label for="feria-pay-city">Ciudad</label>
+                            <input type="text" id="feria-pay-city" autocomplete="off" placeholder="Medellín">
+                        </div>
+                        <div class="feria-field">
+                            <label for="feria-pay-state">Departamento</label>
+                            <input type="text" id="feria-pay-state" autocomplete="off" placeholder="Antioquia">
+                        </div>
+                    </div>
+                    <div class="feria-field">
+                        <label for="feria-pay-barrio">Barrio / referencia</label>
+                        <input type="text" id="feria-pay-barrio" autocomplete="off" placeholder="Opcional">
+                    </div>
+                </div>
+
+                <div class="feria-pay-fields">
+                    <div class="feria-field">
+                        <label for="feria-pay-email">Email del cliente</label>
+                        <input type="email" id="feria-pay-email" autocomplete="off" placeholder="Opcional">
+                    </div>
+                    <div class="feria-field">
+                        <label for="feria-pay-coupon">Cupón</label>
+                        <input type="text" id="feria-pay-coupon" autocomplete="off" autocapitalize="characters" placeholder="Opcional">
+                    </div>
+                </div>
+
+                <div class="feria-pay-total">
+                    <span>Total<small id="feria-pay-total-note"></small></span>
+                    <strong id="feria-pay-total">—</strong>
+                </div>
+            </div>
+
+            <div class="feria-pay-result" id="feria-pay-result" hidden>
+                <p class="feria-pay-ok">Pedido <strong id="feria-pay-number"></strong> creado</p>
+                <p class="feria-pay-result-total">Total a pagar: <strong id="feria-pay-result-total"></strong></p>
+
+                <div class="feria-field">
+                    <label for="feria-pay-url">Link de pago</label>
+                    <input type="text" id="feria-pay-url" readonly>
+                </div>
+
+                <div class="feria-pay-share">
+                    <button type="button" class="feria-btn feria-btn-secondary" id="feria-pay-copy">Copiar link</button>
+                    <a class="feria-btn feria-btn-whatsapp" id="feria-pay-wa" href="#" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+                </div>
+
+                <p class="feria-pay-hint">
+                    El pedido queda pendiente de pago en WooCommerce. Cuando el cliente pague
+                    pasa a «Procesando» y llega el correo de nuevo pedido, como una compra de la tienda.
+                    La ficha quedó guardada con el número de pedido para reenviar el link.
+                </p>
+            </div>
+        </div>
+
+        <div class="feria-drawer-foot">
+            <p class="feria-pay-error" id="feria-pay-error" role="alert"></p>
+            <button type="button" class="feria-btn feria-btn-primary feria-btn-block" id="feria-pay-create">Crear link de pago</button>
+            <button type="button" class="feria-btn feria-btn-primary feria-btn-block" id="feria-pay-new" hidden>Armar otro collar</button>
         </div>
     </aside>
 

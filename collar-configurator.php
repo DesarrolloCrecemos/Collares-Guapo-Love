@@ -144,14 +144,17 @@ class CollarConfiguratorAJAX {
 
     /**
      * Calcular precio del collar en servidor. Único cálculo confiable.
+     *
+     * Son estáticos para que el Panel Interno cobre exactamente lo mismo que la
+     * tienda al crear un link de pago, sin copiar la fórmula.
      */
-    private function max_charms_for_size($size) {
+    public static function max_charms_for_size($size) {
         return isset(self::MAX_CHARMS_BY_SIZE[$size]) ? self::MAX_CHARMS_BY_SIZE[$size] : self::MAX_CHARMS;
     }
 
-    private function calculate_collar_price($size, $charms_count) {
+    public static function calculate_collar_price($size, $charms_count) {
         if (!in_array($size, self::ALLOWED_SIZES, true)) return 0;
-        if ($charms_count < self::MIN_CHARMS || $charms_count > $this->max_charms_for_size($size)) return 0;
+        if ($charms_count < self::MIN_CHARMS || $charms_count > self::max_charms_for_size($size)) return 0;
 
         $base   = self::BASE_PRICES[$size];
         $extras = max(0, $charms_count - self::BASE_CHARMS_INCLUDED);
@@ -1183,6 +1186,18 @@ class CollarConfiguratorAJAX {
      * Agregar el costo de envío como fee según la opción elegida por el cliente.
      * Funciona aunque el producto sea virtual (woocommerce_package_rates no aplica).
      */
+    /**
+     * Tarifas de envío (cargo que se suma al pedido). Las usa el checkout y el
+     * link de pago del Panel Interno, para que ambos cobren lo mismo.
+     */
+    public static function shipping_options() {
+        return array(
+            'local'    => array('label' => 'Envío Deprisa · Bogotá, Chía y Cota', 'cost' => 8900),
+            'nacional' => array('label' => 'Envío Deprisa · Nivel Nacional',       'cost' => 13900),
+            'recoger'  => array('label' => 'Pasar a recoger',                       'cost' => 0),
+        );
+    }
+
     public function add_shipping_fee() {
         if (is_admin() && !defined('DOING_AJAX')) return;
         if (!WC()->session) return;
@@ -1190,11 +1205,7 @@ class CollarConfiguratorAJAX {
         $zone = WC()->session->get('collar_shipping_zone', '');
         if (empty($zone)) return;
 
-        $options = array(
-            'local'    => array('label' => 'Envío Deprisa · Bogotá, Chía y Cota', 'cost' => 8900),
-            'nacional' => array('label' => 'Envío Deprisa · Nivel Nacional',       'cost' => 13900),
-            'recoger'  => array('label' => 'Pasar a recoger',                       'cost' => 0),
-        );
+        $options = self::shipping_options();
 
         if (!isset($options[$zone]) || $options[$zone]['cost'] === 0) return;
 
@@ -1447,7 +1458,7 @@ class CollarConfiguratorAJAX {
      * Construir resumen legible de charms para mostrar al cliente.
      * Ej: "K · E · N · Y · A · 1 emoji"
      */
-    private function build_charms_summary($charms_json) {
+    public static function build_charms_summary($charms_json) {
         $charms = json_decode(wp_unslash($charms_json), true);
         if (!is_array($charms) || empty($charms)) return '';
 

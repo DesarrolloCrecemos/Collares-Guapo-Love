@@ -3,12 +3,17 @@
  * Panel Interno de Personalización — configurador asistido para punto presencial.
  *
  * Herramienta de apoyo para que un operador personalice collares junto al cliente
- * en una feria y genere una ficha (PNG) con el diseño y los datos de contacto.
+ * (en una feria o por WhatsApp) y genere una ficha (PNG) con el diseño y los datos
+ * de contacto.
  *
- * NO toca WooCommerce: no crea pedidos, no cobra, no factura. Las fichas viven en
- * el navegador de la tablet (IndexedDB) y se exportan al final del evento. Esto es
- * deliberado: el WiFi de una feria es el punto de falla clásico, y el panel debe
- * seguir funcionando sin conexión.
+ * Las fichas viven en el navegador (IndexedDB) y se exportan al final del evento.
+ * Esto es deliberado: el WiFi de una feria es el punto de falla clásico, y el panel
+ * debe seguir funcionando sin conexión.
+ *
+ * Lo único que toca WooCommerce es el "Link de pago" (ventas por WhatsApp): crea un
+ * pedido pendiente con el collar armado y devuelve la página de pago del pedido para
+ * mandársela al cliente. Necesita conexión, y el precio lo recalcula el servidor con
+ * la misma fórmula de la tienda.
  *
  * @package CollarConfigurator
  */
@@ -64,6 +69,15 @@ class CollarFeriaPanel {
 
     const CATALOG_TRANSIENT = 'collar_feria_catalogo';
 
+    /** created_via de los pedidos creados con "Link de pago". Los identifica en WooCommerce. */
+    const ORDER_VIA = 'panel-interno';
+
+    /**
+     * Días en que el cliente puede abrir el link de pago sin que WooCommerce le pida
+     * confirmar su email. La clave del pedido en la URL ya es el secreto del link.
+     */
+    const PAY_LINK_DAYS = 30;
+
     public function __construct() {
         add_action('init', array($this, 'add_rewrite'));
         add_filter('query_vars', array($this, 'add_query_var'));
@@ -82,6 +96,13 @@ class CollarFeriaPanel {
         // El operador no es un usuario de WordPress: el desbloqueo va por nopriv.
         add_action('wp_ajax_nopriv_collar_feria_unlock', array($this, 'ajax_unlock'));
         add_action('wp_ajax_collar_feria_unlock', array($this, 'ajax_unlock'));
+
+        // Link de pago para ventas por WhatsApp. Igual que el desbloqueo, lo autoriza
+        // la cookie del panel, no un usuario de WordPress.
+        add_action('wp_ajax_nopriv_collar_feria_create_order', array($this, 'ajax_create_order'));
+        add_action('wp_ajax_collar_feria_create_order', array($this, 'ajax_create_order'));
+
+        add_filter('woocommerce_order_email_verification_grace_period', array($this, 'pay_link_grace_period'), 10, 2);
     }
 
     /* ---------------------------------------------------------------------
@@ -286,6 +307,301 @@ class CollarFeriaPanel {
     }
 
     /* ---------------------------------------------------------------------
+     * Link de pago (ventas por WhatsApp)
+     * ------------------------------------------------------------------ */
+
+    /**
+     * La petición viene de una página del propio sitio. La cookie del panel ya es
+     * SameSite=Lax por defecto, pero un panel que crea pedidos merece el cinturón y
+     * los tirantes. No se usa nonce a propósito: el panel queda abierto días en la
+     * tablet y un nonce muere a las 24 horas.
+     */
+    private function is_same_origin() {
+        $source = '';
+        if (!empty($_SERVER['HTTP_ORIGIN'])) {
+            $source = wp_unslash($_SERVER['HTTP_ORIGIN']);
+        } elseif (!empty($_SERVER['HTTP_REFERER'])) {
+            $source = wp_unslash($_SERVER['HTTP_REFERER']);
+        }
+        $host = wp_parse_url($source, PHP_URL_HOST);
+        $home = wp_parse_url(home_url(), PHP_URL_HOST);
+        return $host && $home && strtolower($host) === strtolower($home);
+    }
+
+    public function ajax_create_order() {
+        nocache_headers();
+
+        if (!$this->has_valid_session()) {
+            wp_send_json_error(array('message' => 'La sesión del panel venció. Recarga la página e ingresa el PIN.'), 403);
+        }
+        if (!$this->is_same_origin()) {
+            wp_send_json_error(array('message' => 'Solicitud no permitida.'), 403);
+        }
+        if (!function_exists('wc_create_order')) {
+            wp_send_json_error(array('message' => 'WooCommerce no está disponible.'));
+        }
+
+        $data = isset($_POST['payload']) ? json_decode(wp_unslash($_POST['payload']), true) : null;
+        if (!is_array($data)) {
+            wp_send_json_error(array('message' => 'No llegaron los datos del pedido.'));
+        }
+
+        try {
+            wp_send_json_success($this->create_pay_order($data));
+        } catch (Exception $e) {
+            wp_send_json_error(array('message' => $e->getMessage()));
+        }
+    }
+
+    /**
+     * Valida cada charm contra el catálogo del disco. Lo que guarda el pedido es lo
+     * que verá producción, así que no se acepta nada que la tienda no venda.
+     */
+    private function sanitize_charms($raw) {
+        if (!is_array($raw) || empty($raw)) {
+            throw new Exception('El collar no tiene charms.');
+        }
+        if (count($raw) > CollarConfiguratorAJAX::MAX_CHARMS * 2) {
+            throw new Exception('Demasiados charms.');
+        }
+
+        $catalog = $this->get_catalog();
+        $colors  = wp_list_pluck($this->charm_colors(), 'hex');
+        $out     = array();
+
+        foreach ($raw as $c) {
+            if (!is_array($c)) {
+                throw new Exception('Diseño no válido.');
+            }
+            $value    = isset($c['value']) ? (string) $c['value'] : '';
+            $hex      = isset($c['colorHex']) ? strtoupper((string) $c['colorHex']) : '';
+            $is_emoji = !empty($c['isEmoji']);
+
+            if (!in_array($hex, $colors, true)) {
+                throw new Exception('Hay un charm con un color que no existe.');
+            }
+            if ($is_emoji) {
+                if (empty($catalog['emojis'][$hex]) || !in_array($value, $catalog['emojis'][$hex], true)) {
+                    throw new Exception('Hay un emoji que no está en el catálogo.');
+                }
+            } elseif (!in_array($value, $catalog['glitter'], true)) {
+                throw new Exception('Hay una letra que no está en el catálogo.');
+            }
+
+            $out[] = array(
+                'value'     => $value,
+                'isEmoji'   => $is_emoji,
+                'colorHex'  => $hex,
+                'isGlitter' => !$is_emoji && in_array($hex, array('#GOLD', '#SILVER'), true),
+            );
+        }
+
+        return $out;
+    }
+
+    /** Teléfono en formato wa.me (solo dígitos, con 57 si es un celular colombiano de 10). */
+    private function whatsapp_digits($phone) {
+        $digits = preg_replace('/\D+/', '', (string) $phone);
+        if (strlen($digits) === 10 && $digits[0] === '3') {
+            $digits = '57' . $digits;
+        }
+        return $digits;
+    }
+
+    /**
+     * Crea el pedido pendiente con el collar armado y devuelve el link de pago.
+     * Replica lo que hace el checkout de la tienda (mismas metas del ítem, mismo
+     * cargo de envío, misma meta de zona) para que el pedido se vea igual en el
+     * admin, en los correos y en la tabla de configuraciones.
+     */
+    private function create_pay_order(array $data) {
+        $product_id = (int) get_option('collar_product_id', 0);
+        $product    = $product_id ? wc_get_product($product_id) : null;
+        if (!$product) {
+            throw new Exception('No hay un producto de collar configurado en la tienda.');
+        }
+
+        // --- Collar ---
+        $size = strtoupper(sanitize_text_field(isset($data['size']) ? $data['size'] : ''));
+        if (!in_array($size, $this->visible_sizes(), true)) {
+            throw new Exception('Talla no válida.');
+        }
+
+        $color = sanitize_text_field(isset($data['color']) ? $data['color'] : '');
+        if (!in_array($color, wp_list_pluck($this->collar_colors(), 'label'), true)) {
+            throw new Exception('Color de collar no válido.');
+        }
+
+        $charms = $this->sanitize_charms(isset($data['charms']) ? $data['charms'] : null);
+        $count  = count($charms);
+        $price  = CollarConfiguratorAJAX::calculate_collar_price($size, $count);
+        if ($price <= 0) {
+            throw new Exception(sprintf(
+                'El collar talla %s lleva entre %d y %d charms.',
+                $size,
+                CollarConfiguratorAJAX::MIN_CHARMS,
+                CollarConfiguratorAJAX::max_charms_for_size($size)
+            ));
+        }
+
+        // --- Cliente ---
+        $c     = isset($data['customer']) && is_array($data['customer']) ? $data['customer'] : array();
+        $name  = sanitize_text_field(isset($c['name']) ? $c['name'] : '');
+        $pet   = sanitize_text_field(isset($c['pet']) ? $c['pet'] : '');
+        $notes = sanitize_text_field(isset($c['notes']) ? $c['notes'] : '');
+        $email = sanitize_email(isset($c['email']) ? $c['email'] : '');
+        $phone = preg_replace('/\D+/', '', isset($c['phone']) ? (string) $c['phone'] : '');
+
+        if ($name === '') {
+            throw new Exception('Escribe el nombre del cliente.');
+        }
+        if (strlen($phone) < 10) {
+            throw new Exception('Escribe el WhatsApp del cliente (10 dígitos).');
+        }
+        if (!empty($c['email']) && !is_email($email)) {
+            throw new Exception('El email no es válido.');
+        }
+
+        // --- Envío ---
+        $s       = isset($data['shipping']) && is_array($data['shipping']) ? $data['shipping'] : array();
+        $zone    = sanitize_key(isset($s['zone']) ? $s['zone'] : '');
+        $options = CollarConfiguratorAJAX::shipping_options();
+        if (!isset($options[$zone])) {
+            throw new Exception('Elige el método de envío.');
+        }
+
+        $address = sanitize_text_field(isset($s['address']) ? $s['address'] : '');
+        $city    = sanitize_text_field(isset($s['city']) ? $s['city'] : '');
+        $state   = sanitize_text_field(isset($s['state']) ? $s['state'] : '');
+        $barrio  = sanitize_text_field(isset($s['barrio']) ? $s['barrio'] : '');
+
+        if ($zone !== 'recoger' && $address === '') {
+            throw new Exception('Escribe la dirección de envío.');
+        }
+        if ($zone === 'nacional' && ($city === '' || $state === '')) {
+            throw new Exception('Para envío nacional escribe la ciudad y el departamento.');
+        }
+        $coupon = wc_format_coupon_code(sanitize_text_field(isset($data['coupon']) ? $data['coupon'] : ''));
+
+        // --- Pedido ---
+        $order = wc_create_order(array('created_via' => self::ORDER_VIA));
+        if (is_wp_error($order)) {
+            throw new Exception('WooCommerce no pudo crear el pedido.');
+        }
+
+        try {
+            $item_id = $order->add_product($product, 1, array('subtotal' => $price, 'total' => $price));
+            $item    = $order->get_item($item_id);
+            if (!$item) {
+                throw new Exception('No se pudo agregar el collar al pedido.');
+            }
+
+            $charms_json = wp_json_encode($charms);
+            $item->add_meta_data('Tamaño', $size, true);
+            $item->add_meta_data('Color del collar', $color, true);
+            $item->add_meta_data('Charms', $count, true);
+            $summary = CollarConfiguratorAJAX::build_charms_summary($charms_json);
+            if ($summary !== '') {
+                $item->add_meta_data('Diseño', $summary, true);
+            }
+            if ($pet !== '') {
+                $item->add_meta_data('Nombre del peludo', $pet, true);
+            }
+            $item->add_meta_data('_collar_charms_data', $charms_json, true);
+            $item->save();
+
+            if ($options[$zone]['cost'] > 0) {
+                $fee = new WC_Order_Item_Fee();
+                $fee->set_name($options[$zone]['label']);
+                $fee->set_amount($options[$zone]['cost']);
+                $fee->set_total($options[$zone]['cost']);
+                $fee->set_tax_status('none');
+                $order->add_item($fee);
+            }
+
+            $parts = preg_split('/\s+/', $name, 2);
+            $first = $parts[0];
+            $last  = isset($parts[1]) ? $parts[1] : '';
+
+            $order->set_billing_first_name($first);
+            $order->set_billing_last_name($last);
+            $order->set_billing_phone($phone);
+            $order->set_billing_country('CO');
+            if ($email !== '') {
+                $order->set_billing_email($email);
+            }
+
+            $order->update_meta_data('_collar_shipping_zone', $zone);
+            if ($zone !== 'recoger') {
+                $order->set_shipping_first_name($first);
+                $order->set_shipping_last_name($last);
+                $order->set_shipping_address_1($address);
+                $order->set_shipping_address_2($barrio);
+                $order->set_shipping_city($city);
+                $order->set_shipping_state($state);
+                $order->set_shipping_country('CO');
+                $order->set_billing_address_1($address);
+                $order->set_billing_city($city);
+                $order->set_billing_state($state);
+            }
+
+            $order->calculate_totals();
+            $order->save();
+
+            if ($coupon !== '') {
+                $applied = $order->apply_coupon($coupon);
+                if (is_wp_error($applied)) {
+                    throw new Exception('Cupón: ' . wp_strip_all_tags($applied->get_error_message()));
+                }
+            }
+
+            $evento = get_option(self::OPT_EVENT, '');
+            $order->add_order_note(
+                'Pedido creado desde el Panel Interno con "Link de pago" (venta por WhatsApp).'
+                . ($evento !== '' ? ' Evento: ' . $evento . '.' : '')
+                . ($notes !== '' ? ' Notas: ' . $notes : '')
+            );
+            $order->save();
+        } catch (Exception $e) {
+            // Sin pedidos a medio crear: si algo falla, el pedido no queda en el admin.
+            $order->delete(true);
+            throw $e;
+        }
+
+        $total      = (float) $order->get_total();
+        $total_text = '$' . number_format($total, 0, ',', '.');
+        $pay_url    = $order->get_checkout_payment_url();
+
+        $message = '¡Hola ' . $first . '! Este es el link para pagar '
+            . ($pet !== '' ? 'el collar de ' . $pet : 'tu collar Guapo')
+            . ' (pedido #' . $order->get_order_number() . ', total ' . $total_text . '):' . "\n" . $pay_url;
+
+        return array(
+            'orderId'    => $order->get_id(),
+            'number'     => $order->get_order_number(),
+            'payUrl'     => $pay_url,
+            'total'      => $total,
+            'totalText'  => $total_text,
+            'discount'   => (float) $order->get_discount_total(),
+            'message'    => $message,
+            'waUrl'      => 'https://wa.me/' . $this->whatsapp_digits($phone) . '?text=' . rawurlencode($message),
+            'adminUrl'   => $order->get_edit_order_url(),
+        );
+    }
+
+    /**
+     * El cliente abre el link de pago horas o días después. Pasados 10 minutos de
+     * creado el pedido, WooCommerce le pediría confirmar su email antes de pagar,
+     * un paso que en una venta por WhatsApp solo hace perder la venta.
+     */
+    public function pay_link_grace_period($grace, $order) {
+        if ($order instanceof WC_Order && $order->get_created_via() === self::ORDER_VIA) {
+            return max((int) $grace, self::PAY_LINK_DAYS * DAY_IN_SECONDS);
+        }
+        return $grace;
+    }
+
+    /* ---------------------------------------------------------------------
      * Catálogo: se lee del disco, nunca se hardcodea
      * ------------------------------------------------------------------ */
 
@@ -405,6 +721,8 @@ class CollarFeriaPanel {
             'glitter'     => $catalog['glitter'],
             'soldOut'     => array_values($sold_out),
             'precache'    => $this->get_precache_urls(),
+            // Link de pago: tarifas de envío para la cotización del cajón de pago.
+            'shipping'    => CollarConfiguratorAJAX::shipping_options(),
         );
     }
 
@@ -721,8 +1039,10 @@ class CollarFeriaPanel {
             <?php endif; ?>
 
             <p>
-                Herramienta de apoyo para personalizar collares en punto presencial.
-                No crea pedidos ni cobra: genera una ficha con el diseño y los datos del cliente.
+                Herramienta de apoyo para personalizar collares en punto presencial o por WhatsApp.
+                «Guardar ficha» solo genera una ficha con el diseño y los datos del cliente.
+                «Link de pago» crea un pedido pendiente en WooCommerce y entrega el link para que
+                el cliente pague (Bold o Addi); el pedido aparece en WooCommerce como cualquier otro.
             </p>
 
             <table class="form-table" role="presentation">
