@@ -1,0 +1,1212 @@
+/* =========================================================================
+   Panel Interno de Personalización — estilos
+   Tablet en horizontal. Objetivos táctiles grandes, sin scroll en el área de
+   trabajo, contraste alto para stands con luz difícil.
+   ========================================================================= */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+    --feria-accent:      #FF015B;
+    --feria-accent-dark: #d80049;
+    --feria-ink:         #17181c;
+    --feria-muted:       #6b7280;
+    --feria-line:        #e5e7eb;
+    --feria-surface:     #ffffff;
+    --feria-bg:          #f3f4f6;
+    --feria-radius:      14px;
+    --feria-tap:         56px;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+body.feria-body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--feria-bg);
+    color: var(--feria-ink);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+}
+
+button { font-family: inherit; cursor: pointer; }
+
+/* =========================================================================
+   Pantalla de bloqueo (PIN)
+   ========================================================================= */
+
+.feria-lock,
+.feria-gate-msg {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: linear-gradient(160deg, #1b1c22 0%, #33141f 100%);
+}
+
+.feria-gate-msg {
+    flex-direction: column;
+    text-align: center;
+    color: #fff;
+}
+.feria-gate-msg h1 { font-size: 30px; margin: 0 0 14px; }
+.feria-gate-msg p  { margin: 0 0 10px; color: #d1d5db; max-width: 460px; }
+.feria-gate-hint   { font-size: 14px; color: #9ca3af !important; }
+
+.feria-lock-card {
+    background: var(--feria-surface);
+    border-radius: 22px;
+    padding: 36px 34px 30px;
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .35);
+}
+
+.feria-lock-card h1 {
+    margin: 0 0 6px;
+    font-size: 25px;
+    letter-spacing: -.4px;
+}
+
+.feria-lock-sub {
+    margin: 0 0 26px;
+    color: var(--feria-muted);
+    font-size: 15px;
+}
+
+.feria-pin-dots {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.feria-pin-dots span {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 2px solid #cbd5e1;
+    transition: background .15s, border-color .15s, transform .15s;
+}
+
+.feria-pin-dots span.filled {
+    background: var(--feria-accent);
+    border-color: var(--feria-accent);
+    transform: scale(1.12);
+}
+
+.feria-pin-dots.shake { animation: feria-shake .38s; }
+
+@keyframes feria-shake {
+    0%, 100% { transform: translateX(0); }
+    20%      { transform: translateX(-9px); }
+    40%      { transform: translateX(9px); }
+    60%      { transform: translateX(-6px); }
+    80%      { transform: translateX(6px); }
+}
+
+.feria-pin-error {
+    min-height: 34px;
+    font-size: 13.5px;
+    color: #dc2626;
+    line-height: 1.4;
+    padding: 0 6px;
+}
+
+.feria-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.feria-keypad button {
+    height: 62px;
+    font-size: 24px;
+    font-weight: 600;
+    border: 1px solid var(--feria-line);
+    background: #fafafa;
+    border-radius: var(--feria-radius);
+    color: var(--feria-ink);
+    transition: background .12s, transform .08s;
+}
+
+.feria-keypad button:active {
+    background: #ececec;
+    transform: scale(.95);
+}
+
+/* =========================================================================
+   Estructura de la app
+   ========================================================================= */
+
+.feria-app {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.feria-topbar {
+    flex: 0 0 auto;
+    height: 60px;
+    background: var(--feria-ink);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+}
+
+.feria-brand {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;      /* permite que el rótulo se recorte en vez de empujar los botones */
+    overflow: hidden;
+}
+
+.feria-logo {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -.2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Por defecto manda el nombre completo; el corto entra en pantallas angostas. */
+.feria-logo-short,
+.feria-label-short { display: none; }
+
+.feria-evento {
+    font-size: 13px;
+    color: #9ca3af;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Los botones nunca se encogen ni se parten: antes "Fichas de hoy" caía en tres
+   líneas y el contador se salía de la barra. */
+.feria-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.feria-net {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #22c55e;
+    flex: 0 0 auto;
+}
+.feria-net.is-offline { background: #f59e0b; }
+
+.feria-badge {
+    display: inline-block;
+    min-width: 22px;
+    padding: 1px 6px;
+    margin-left: 6px;
+    border-radius: 11px;
+    background: var(--feria-accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.feria-main {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: minmax(330px, 34%) 1fr;
+    gap: 14px;
+    padding: 14px;
+    min-height: 0;
+}
+
+.feria-col {
+    background: var(--feria-surface);
+    border-radius: var(--feria-radius);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+}
+
+.feria-col-preview { gap: 14px; overflow-y: auto; }
+.feria-col-controls { gap: 14px; }
+
+/* =========================================================================
+   Vista previa del collar
+   ========================================================================= */
+
+.feria-preview-stage {
+    flex: 0 0 auto;
+    min-height: 130px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--feria-bg);
+    border-radius: 12px;
+    padding: 18px 12px;
+
+    /* Con 9 charms el collar mide ~354px. En un teléfono angosto desbordaría y
+       empujaría toda la página en horizontal: aquí se desplaza dentro del marco. */
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.feria-preview-band {
+    min-width: 190px;
+    max-width: 100%;
+    height: 58px;
+    border-radius: 29px;
+    background: #000;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 0 22px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, .18);
+    transition: background .25s;
+}
+
+.feria-preview-charms { display: flex; align-items: center; gap: 5px; }
+
+.feria-charm {
+    font-size: 27px;
+    font-weight: 900;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, .8);
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .45));
+    position: relative;
+}
+
+.feria-charm img { height: 34px; width: auto; display: block; }
+
+/* Sin insignia encima del charm: la × tapaba la letra justo cuando el operador
+   necesitaba leerla. Ahora el charm se resalta al recorrerlo y se quita al pulsar,
+   así el collar se lee entero en todo momento. */
+.feria-charm {
+    padding: 4px 3px;
+    border-radius: 8px;
+    outline: 2px solid transparent;
+    outline-offset: 1px;
+    transition: transform .12s, background .12s, outline-color .12s;
+}
+
+.feria-charm-clickable { cursor: pointer; }
+
+/* Resaltado al pasar el cursor (escritorio) o al seleccionar con el dedo (táctil). */
+@media (hover: hover) {
+    .feria-charm-clickable:hover {
+        background: rgba(255, 255, 255, .22);
+        outline-color: #fff;
+        transform: translateY(-3px) scale(1.06);
+    }
+}
+
+.feria-charm.is-armed {
+    background: rgba(255, 1, 91, .35);
+    outline-color: #fff;
+    transform: translateY(-3px) scale(1.1);
+}
+
+.feria-charm-clickable:active { transform: scale(.9); }
+
+/* Marca discreta bajo el charm seleccionado: señala cuál se va a quitar sin
+   taparlo. Solo aparece cuando el charm está armado. */
+.feria-charm.is-armed::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -9px;
+    width: 22px;
+    height: 3px;
+    border-radius: 2px;
+    background: #fff;
+    transform: translateX(-50%);
+}
+
+.feria-preview-empty {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: var(--feria-muted);
+    text-align: center;
+}
+
+/* Barra de corrección bajo el collar: la pista de que se puede borrar de a uno
+   y el atajo para deshacer el último, que es el error más común al teclear. */
+.feria-preview-tools {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: -4px;
+}
+
+.feria-preview-hint {
+    font-size: 12.5px;
+    color: var(--feria-muted);
+    line-height: 1.35;
+}
+
+.feria-undo-btn {
+    flex: 0 0 auto;
+    min-height: 42px;
+    padding: 0 16px;
+    border: 1px solid var(--feria-line);
+    border-radius: 10px;
+    background: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--feria-ink);
+    white-space: nowrap;
+    transition: transform .08s, opacity .15s;
+}
+
+.feria-undo-btn:active { transform: scale(.95); }
+
+.feria-undo-btn:disabled {
+    opacity: .35;
+    pointer-events: none;
+}
+
+/* =========================================================================
+   Resumen y cotización
+   ========================================================================= */
+
+.feria-summary {
+    flex: 0 0 auto;
+    border: 1px solid var(--feria-line);
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+.feria-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 5px 0;
+    font-size: 14px;
+}
+
+.feria-summary-row span { color: var(--feria-muted); }
+.feria-summary-row strong { font-weight: 600; }
+
+.feria-summary-price {
+    border-top: 1px solid var(--feria-line);
+    margin-top: 6px;
+    padding-top: 10px;
+}
+
+.feria-summary-price strong {
+    font-size: 25px;
+    font-weight: 800;
+    color: var(--feria-accent);
+    letter-spacing: -.5px;
+}
+
+.feria-price-note {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--feria-muted);
+    line-height: 1.4;
+}
+.feria-price-note.is-warn { color: #b45309; font-weight: 600; }
+
+/* =========================================================================
+   Datos del cliente
+   ========================================================================= */
+
+.feria-customer {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.feria-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+.feria-field label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--feria-muted);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+
+.feria-field input {
+    height: 44px;
+    border: 1px solid var(--feria-line);
+    border-radius: 10px;
+    padding: 0 12px;
+    font-size: 16px; /* 16px evita el zoom automático de iOS al enfocar */
+    color: var(--feria-ink);
+    background: #fff;
+    width: 100%;
+}
+
+.feria-field input:focus {
+    outline: none;
+    border-color: var(--feria-accent);
+    box-shadow: 0 0 0 3px rgba(255, 1, 91, .12);
+}
+
+/* =========================================================================
+   Botones
+   ========================================================================= */
+
+.feria-actions {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1.4fr 1.4fr;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 4px;
+}
+
+.feria-btn {
+    min-height: var(--feria-tap);
+    border-radius: 12px;
+    border: 1px solid transparent;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 0 18px;
+    transition: transform .08s, background .15s, opacity .15s;
+}
+
+.feria-btn:active { transform: scale(.97); }
+.feria-btn:disabled { opacity: .45; pointer-events: none; }
+
+.feria-btn-primary { background: var(--feria-accent); color: #fff; }
+.feria-btn-primary:active { background: var(--feria-accent-dark); }
+
+.feria-btn-secondary {
+    background: #fff;
+    color: var(--feria-ink);
+    border-color: var(--feria-line);
+}
+
+.feria-btn-ghost {
+    background: rgba(255, 255, 255, .12);
+    color: #fff;
+    min-height: 40px;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0 14px;
+    border-radius: 10px;
+}
+
+.feria-btn-block { width: 100%; }
+
+/* Verde WhatsApp: el botón que manda el link al cliente. */
+.feria-btn-whatsapp {
+    background: #1fa855;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    text-decoration: none;
+}
+.feria-btn-whatsapp:active { background: #178a45; }
+
+/* =========================================================================
+   Cajón: link de pago
+   ========================================================================= */
+
+.feria-pay-form,
+.feria-pay-result { display: flex; flex-direction: column; gap: 14px; }
+
+.feria-pay-form[hidden],
+.feria-pay-result[hidden],
+.feria-pay-fields[hidden],
+.feria-pay-row[hidden],
+.feria-drawer-foot .feria-btn[hidden] { display: none; }
+
+.feria-pay-summary {
+    background: var(--feria-bg);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.45;
+}
+.feria-pay-summary strong { display: block; font-size: 15px; }
+
+.feria-pay-zones { border: none; margin: 0; padding: 0; min-width: 0; }
+.feria-pay-zones legend,
+.feria-pay-total span {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--feria-muted);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    padding: 0;
+    margin-bottom: 6px;
+}
+
+.feria-pay-zone {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 0 14px;
+    margin-bottom: 6px;
+    border: 2px solid var(--feria-line);
+    border-radius: 10px;
+    font-size: 15px;
+    cursor: pointer;
+}
+.feria-pay-zone input { accent-color: var(--feria-accent); width: 18px; height: 18px; margin: 0; }
+.feria-pay-zone span { flex: 1; }
+.feria-pay-zone.is-active { border-color: var(--feria-accent); }
+
+.feria-pay-fields { display: flex; flex-direction: column; gap: 10px; }
+.feria-pay-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.feria-pay-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-top: 1px solid var(--feria-line);
+    padding-top: 12px;
+}
+.feria-pay-total small {
+    display: block;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    margin-top: 2px;
+}
+.feria-pay-total strong { font-size: 22px; color: var(--feria-accent); }
+
+.feria-pay-error { margin: 0 0 10px; color: #dc2626; font-size: 14px; font-weight: 600; }
+.feria-pay-error:empty { display: none; }
+
+.feria-pay-ok { margin: 0; font-size: 18px; }
+.feria-pay-result-total { margin: 0; font-size: 15px; }
+.feria-pay-result-total strong { color: var(--feria-accent); font-size: 18px; }
+.feria-pay-result .feria-field input { font-size: 14px; background: var(--feria-bg); }
+
+.feria-pay-share { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
+
+.feria-pay-hint { margin: 0; font-size: 13px; color: var(--feria-muted); line-height: 1.45; }
+
+.feria-card-order { font-size: 12.5px; font-weight: 600; color: #178a45; margin: -2px 0 8px; }
+
+/* =========================================================================
+   Bloques de control
+   ========================================================================= */
+
+.feria-block { flex: 0 0 auto; display: flex; flex-direction: column; gap: 9px; min-height: 0; }
+.feria-block-grow { flex: 1 1 auto; }
+
+.feria-block-title {
+    margin: 0;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--feria-muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.feria-block-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+/* --- Tallas --- */
+
+.feria-size-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+
+.feria-size-btn {
+    height: 50px;
+    border: 2px solid var(--feria-line);
+    border-radius: 11px;
+    background: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--feria-ink);
+}
+
+.feria-size-btn.is-active {
+    border-color: var(--feria-accent);
+    background: var(--feria-accent);
+    color: #fff;
+}
+
+/* --- Colores --- */
+
+.feria-swatch-row { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.feria-swatch {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 1px var(--feria-line);
+    position: relative;
+    padding: 0;
+}
+
+.feria-swatch.is-active {
+    box-shadow: 0 0 0 3px var(--feria-accent);
+    transform: scale(1.06);
+}
+
+.feria-swatch.is-disabled {
+    opacity: .3;
+    pointer-events: none;
+}
+
+.feria-swatch.is-disabled::after {
+    content: '';
+    position: absolute;
+    inset: 40% -4px auto -4px;
+    height: 2px;
+    background: #111;
+    transform: rotate(-45deg);
+}
+
+/* --- Colores de charm --- */
+
+.feria-charm-colors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.feria-charm-color {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 1px var(--feria-line);
+    position: relative;
+    padding: 0;
+    background-size: cover;
+    background-position: center;
+}
+
+.feria-charm-color.is-active {
+    box-shadow: 0 0 0 3px var(--feria-ink);
+    transform: scale(1.06);
+}
+
+.feria-charm-color.is-disabled { opacity: .3; pointer-events: none; }
+
+.feria-charm-color.is-disabled::after {
+    content: '';
+    position: absolute;
+    inset: 40% -3px auto -3px;
+    height: 2px;
+    background: #111;
+    transform: rotate(-45deg);
+}
+
+/* --- Pestañas --- */
+
+.feria-tabs {
+    display: inline-flex;
+    background: var(--feria-bg);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 3px;
+}
+
+.feria-tab {
+    min-height: 40px;
+    padding: 0 20px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--feria-muted);
+}
+
+.feria-tab.is-active { background: #fff; color: var(--feria-ink); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+
+.feria-limit { font-size: 12.5px; color: var(--feria-muted); text-align: right; }
+.feria-limit.is-full { color: #b45309; font-weight: 700; }
+
+.feria-tabpanel { display: none; flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.feria-tabpanel.is-active { display: block; }
+
+/* --- Teclado --- */
+
+.feria-keyboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+    gap: 7px;
+    padding-bottom: 4px;
+}
+
+.feria-key {
+    height: 54px;
+    border: 1px solid var(--feria-line);
+    border-radius: 10px;
+    background: #fff;
+    font-size: 21px;
+    font-weight: 800;
+    color: var(--feria-ink);
+    background-size: cover;
+    background-position: center;
+    transition: transform .08s;
+}
+
+.feria-key:active { transform: scale(.92); }
+
+/* --- Emojis --- */
+
+.feria-emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 8px;
+    padding-bottom: 4px;
+}
+
+.feria-emoji {
+    aspect-ratio: 1;
+    min-height: 72px; /* respaldo para iPadOS anterior a 15, sin aspect-ratio */
+    border: 1px solid var(--feria-line);
+    border-radius: 10px;
+    background: #fff;
+    padding: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform .08s;
+}
+
+.feria-emoji:active { transform: scale(.92); }
+.feria-emoji img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+/* Bloqueo visual al llegar al máximo de charms */
+.feria-tabpanel.is-locked,
+.feria-charm-colors.is-locked {
+    opacity: .4;
+    pointer-events: none;
+}
+
+/* =========================================================================
+   Cajones laterales
+   ========================================================================= */
+
+.feria-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 400px;
+    max-width: 92vw;
+    background: var(--feria-surface);
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(101%);
+    transition: transform .25s ease;
+    box-shadow: -8px 0 30px rgba(0, 0, 0, .18);
+}
+
+.feria-drawer.is-open { transform: translateX(0); }
+
+.feria-drawer-head {
+    flex: 0 0 auto;
+    height: 60px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--feria-line);
+}
+
+.feria-drawer-head h2 { margin: 0; font-size: 17px; }
+
+.feria-drawer-close {
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: transparent;
+    font-size: 30px;
+    line-height: 1;
+    color: var(--feria-muted);
+}
+
+.feria-drawer-body { flex: 1 1 auto; overflow-y: auto; padding: 12px; }
+
+.feria-drawer-foot {
+    flex: 0 0 auto;
+    padding: 12px;
+    border-top: 1px solid var(--feria-line);
+}
+
+.feria-scrim {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: rgba(0, 0, 0, .45);
+    z-index: 50;
+}
+
+/* --- Tarjetas de ficha --- */
+
+.feria-card {
+    border: 1px solid var(--feria-line);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.feria-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.feria-card-title { font-weight: 700; font-size: 15px; }
+.feria-card-time  { font-size: 12px; color: var(--feria-muted); white-space: nowrap; }
+
+.feria-card-band {
+    height: 34px;
+    border-radius: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 0 12px;
+    margin-bottom: 9px;
+    overflow: hidden;
+}
+
+.feria-card-band .feria-charm { font-size: 16px; }
+.feria-card-band .feria-charm img { height: 20px; }
+.feria-card-band .feria-charm::after { display: none; }
+
+.feria-card-meta {
+    font-size: 12.5px;
+    color: var(--feria-muted);
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+.feria-card-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.feria-card-actions.has-order { grid-template-columns: repeat(4, 1fr); }
+
+.feria-card-btn {
+    min-height: 40px;
+    border: 1px solid var(--feria-line);
+    border-radius: 9px;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--feria-ink);
+}
+
+.feria-card-btn.is-danger { color: #dc2626; }
+
+.feria-empty {
+    text-align: center;
+    color: var(--feria-muted);
+    font-size: 14px;
+    padding: 40px 20px;
+    line-height: 1.6;
+}
+
+/* --- Menú de opciones --- */
+
+.feria-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 1px solid var(--feria-line);
+    border-radius: 12px;
+    background: #fff;
+    padding: 14px;
+    margin-bottom: 10px;
+}
+
+.feria-menu-item strong { display: block; font-size: 15px; margin-bottom: 3px; }
+.feria-menu-item small  { display: block; font-size: 12.5px; color: var(--feria-muted); line-height: 1.45; }
+.feria-menu-danger strong { color: #dc2626; }
+
+.feria-progress { padding: 4px 2px 14px; }
+
+.feria-progress-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--feria-line);
+    overflow: hidden;
+}
+
+.feria-progress-bar span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--feria-accent);
+    transition: width .2s;
+}
+
+.feria-progress p { margin: 7px 0 0; font-size: 12.5px; color: var(--feria-muted); }
+
+/* =========================================================================
+   Visor de referencias del producto
+   ========================================================================= */
+
+.feria-viewer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 80;
+    background: rgba(12, 12, 15, .96);
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+    gap: 10px;
+}
+
+.feria-viewer[hidden] { display: none; }
+
+.feria-viewer-head {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #fff;
+}
+
+.feria-viewer-title   { font-size: 16px; font-weight: 700; }
+.feria-viewer-counter { font-size: 13px; color: #9ca3af; margin-right: auto; }
+
+.feria-viewer-close {
+    width: 46px;
+    height: 46px;
+    border: none;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .12);
+    color: #fff;
+    font-size: 30px;
+    line-height: 1;
+}
+
+.feria-viewer-stage {
+    flex: 1 1 auto;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+}
+
+.feria-viewer-stage img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 10px;
+    /* Sin fondo transparente: muchas fotos de producto son PNG recortados. */
+    background: #fff;
+}
+
+.feria-viewer-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 54px;
+    height: 54px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .16);
+    color: #fff;
+    font-size: 34px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.feria-viewer-nav:active { background: rgba(255, 255, 255, .3); }
+.feria-viewer-prev { left: 6px; }
+.feria-viewer-next { right: 6px; }
+
+.feria-viewer-caption {
+    flex: 0 0 auto;
+    margin: 0;
+    text-align: center;
+    color: #d1d5db;
+    font-size: 13.5px;
+    min-height: 18px;
+}
+
+.feria-viewer-thumbs {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.feria-viewer-thumb {
+    flex: 0 0 auto;
+    width: 66px;
+    height: 66px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 9px;
+    overflow: hidden;
+    background: #fff;
+    opacity: .55;
+    transition: opacity .15s, border-color .15s;
+}
+
+.feria-viewer-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.feria-viewer-thumb.is-active {
+    opacity: 1;
+    border-color: var(--feria-accent);
+}
+
+/* =========================================================================
+   Aviso flotante
+   ========================================================================= */
+
+.feria-toast {
+    position: fixed;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--feria-ink);
+    color: #fff;
+    padding: 13px 24px;
+    border-radius: 11px;
+    font-size: 14.5px;
+    font-weight: 600;
+    z-index: 90;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .3);
+    max-width: 88vw;
+    text-align: center;
+}
+
+.feria-toast.is-error { background: #dc2626; }
+
+/* =========================================================================
+   Pantallas angostas: se apila y se permite scroll vertical
+   ========================================================================= */
+
+@media (max-width: 900px) {
+    /* height:100% dejaba el documento clavado a la altura de la ventana: el panel
+       apilado mide bastante más y todo lo que quedaba por debajo era inalcanzable,
+       porque no había scroll. Con altura automática la página crece y se desplaza. */
+    html, body {
+        height: auto;
+        min-height: 100%;
+        overflow: visible;
+    }
+
+    .feria-app { height: auto; min-height: 100vh; }
+
+    .feria-main {
+        /* minmax(0,1fr) y no 1fr: el mínimo automático de una pista de grid es el
+           ancho mínimo del contenido, y eso ensanchaba la columna más que la pantalla. */
+        grid-template-columns: minmax(0, 1fr);
+        height: auto;
+    }
+
+    .feria-col { min-height: 0; min-width: 0; }
+    .feria-col-preview { overflow-y: visible; }
+    .feria-tabpanel { overflow: visible; max-height: none; }
+    .feria-evento { display: none; }
+}
+
+/* =========================================================================
+   Teléfono. El panel está pensado para tablet, pero debe seguir siendo usable
+   en un móvil: es el dispositivo de respaldo si la tablet falla en el stand.
+   ========================================================================= */
+
+@media (max-width: 600px) {
+    .feria-main { padding: 10px; gap: 10px; }
+    .feria-col  { padding: 12px; }
+
+    /* Los campos de datos a una sola columna: dos de 165px son inescribibles. */
+    .feria-customer { grid-template-columns: 1fr; }
+
+    /* El nombre completo no cabe junto a tres botones: se cambia por el corto. */
+    .feria-logo { font-size: 15px; }
+    .feria-logo-full,
+    .feria-label-full { display: none; }
+    .feria-logo-short { display: inline; }
+    .feria-label-short { display: inline; }
+
+    .feria-topbar { padding: 0 10px; }
+    .feria-topbar-actions { gap: 6px; }
+    .feria-btn-ghost { padding: 0 10px; font-size: 13px; }
+
+    .feria-preview-tools {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .feria-preview-hint { text-align: center; }
+    .feria-undo-btn { width: 100%; }
+
+    .feria-actions { grid-template-columns: 1fr; }
+    .feria-actions .feria-btn { min-height: 50px; }
+
+    /* Teclas y emojis más pequeños para que quepan más por fila. */
+    .feria-keyboard   { grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 6px; }
+    .feria-key        { height: 48px; font-size: 19px; }
+    .feria-emoji-grid { grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 6px; }
+    .feria-emoji      { min-height: 60px; padding: 5px; }
+
+    .feria-swatch       { width: 44px; height: 44px; }
+    .feria-charm-color  { width: 40px; height: 40px; }
+    .feria-size-btn     { height: 46px; font-size: 15px; }
+
+    .feria-card-actions,
+    .feria-card-actions.has-order { grid-template-columns: 1fr 1fr; }
+    .feria-drawer       { width: 100%; max-width: 100%; }
+    .feria-pay-row,
+    .feria-pay-share    { grid-template-columns: 1fr; }
+}
+
+/* Muy estrecho (iPhone SE y similares): con tres botones el rótulo queda en
+   "Panel In…", que no informa de nada. Mejor cederle el espacio a los botones. */
+@media (max-width: 360px) {
+    .feria-logo { display: none; }
+    .feria-topbar-actions { gap: 8px; }
+}
+
+/* Móvil en horizontal: la barra superior y el teclado comen toda la altura. */
+@media (max-height: 480px) and (orientation: landscape) {
+    .feria-topbar { height: 48px; }
+    .feria-preview-stage { min-height: 96px; padding: 10px; }
+    .feria-preview-band  { height: 48px; }
+    .feria-charm img     { height: 28px; }
+}

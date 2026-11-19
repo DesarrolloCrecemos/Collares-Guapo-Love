@@ -5,29 +5,39 @@ const ASSETS_BASE_URL = typeof collarConfig !== 'undefined' ? collarConfig.asset
 // Variables globales
 let collarSize = 'S';
 let collarColor = 'Negro';
-let currentEmojiColor = '#BA0000';
-let currentCharmColor = '#BA0000'; // Color hex del charm seleccionado (rojo por defecto)
+let currentEmojiColor = '#FF64DC';
+let currentCharmColor = '#FF64DC'; // Color hex del charm seleccionado (rosa por defecto)
 let currentCharms = [];
 let baseCharms = 6; // Cantidad base de charms incluidos en el precio
-let minCharms = 5; // Mínimo requerido para comprar
-let maxCharms = 20; // Máximo técnico permitido (por espacio)
+let minCharms = 6; // Mínimo requerido para comprar
+
+// Máximo de charms por talla (por espacio físico en el collar).
+// Por ahora 9 para todas las tallas; ajustar cuando confirmen el máximo real de cada una.
+const MAX_CHARMS_BY_SIZE = {
+    XS: 9,
+    S: 9,
+    M: 9,
+    L: 9,
+    XL: 9
+};
+let maxCharms = MAX_CHARMS_BY_SIZE['S']; // Se actualiza al cambiar de talla
 
 // Precios base (con 6 charms incluidos)
 const basePrices = {
-    'XS': 65900,
-    'S': 75900,
-    'M': 75900,
-    'L': 75900,
-    'XL': 75900
+    'XS': 69800,
+    'S': 84900,
+    'M': 84900,
+    'L': 84900,
+    'XL': 84900
 };
 
 // Precio por charm extra
 const extraCharmPrice = {
-    'XS': 4000,
-    'S': 5000,
-    'M': 5000,
-    'L': 5000,
-    'XL': 5000
+    'XS': 3000,
+    'S': 4800,
+    'M': 4800,
+    'L': 4800,
+    'XL': 4800
 };
 
 // Mapeo de colores hex a código de carpeta (sin #)
@@ -83,18 +93,109 @@ function changeCollarSize(size) {
     collarSize = sizeNames[size] || size.toUpperCase();
     const sizeField = document.getElementById('values-collar-size');
     if (sizeField) sizeField.value = collarSize;
+
+    // Ajustar el máximo de charms según la talla. Si la talla nueva admite menos
+    // charms de los que ya hay, recortar los sobrantes y avisar.
+    maxCharms = MAX_CHARMS_BY_SIZE[collarSize] || 9;
+    if (currentCharms.length > maxCharms) {
+        currentCharms = currentCharms.slice(0, maxCharms);
+        updateCharmsDisplay();
+        updateSummary();
+        saveConfiguration();
+        alert(`La talla ${collarSize} admite máximo ${maxCharms} charms. Se quitaron los charms sobrantes.`);
+    }
     
     const summarySize = document.getElementById('summary-size');
     if (summarySize) summarySize.textContent = collarSize;
     
     // Actualizar precio según el nuevo tamaño
     updatePriceDisplay();
-    
-    console.log('Tamaño seleccionado:', collarSize);
+
+    // Actualizar sección de bundle según talla
+    updateBundleDisplay();
+
+    // Restricciones de XS: solo para gatos, sin charms dorados
+    const isXS = (collarSize === 'XS');
+    const goldBtn = document.querySelector('.emoji-color-selector.emoji-gold');
+    if (goldBtn) {
+        if (isXS) {
+            goldBtn.style.opacity = '0.3';
+            goldBtn.style.pointerEvents = 'none';
+            goldBtn.title = 'Dorado no disponible en talla XS';
+            // Si el dorado está activo, cambiar al color por defecto
+            if (currentCharmColor === '#GOLD') {
+                loadEmojis('#FF64DC');
+            }
+        } else {
+            goldBtn.style.opacity = '1';
+            goldBtn.style.pointerEvents = '';
+            goldBtn.title = 'Dorado';
+        }
+    }
+
+    // Mostrar/ocultar aviso de talla para gatos
+    const catNotice = document.getElementById('xs-cat-notice');
+    if (catNotice) catNotice.style.display = isXS ? 'block' : 'none';
+
+    // Aplicar disponibilidad de colores del collar según la talla (XS tiene stock limitado)
+    applyCollarColorAvailability();
+}
+
+// Stock de colores del collar por talla. Solo XS tiene restricción; el resto admite todos.
+// Clases CSS: collar1=Naranja, collar2=Negro, collar3=Azul, collar4=Amarillo,
+// collar5=Rosa(fucsia), collar6=Rojo.
+const COLLAR_COLOR_NAMES = {
+    collar1: 'Naranja',
+    collar2: 'Negro',
+    collar3: 'Azul',
+    collar4: 'Amarillo',
+    collar5: 'Rosa',
+    collar6: 'Rojo'
+};
+const COLLAR_COLOR_STOCK_BY_SIZE = {
+    // En XS solo hay stock de Rosa (fucsia), Rojo y Azul.
+    XS: ['collar5', 'collar6', 'collar3']
+};
+
+// Marca como "agotado" los colores sin stock para la talla actual y reactiva el resto.
+// Si el color activo deja de estar disponible, selecciona el primero disponible.
+function applyCollarColorAvailability() {
+    const allowed = COLLAR_COLOR_STOCK_BY_SIZE[collarSize] || null; // null = todos disponibles
+    let activeIsUnavailable = false;
+
+    document.querySelectorAll('.collar-color-option').forEach(btn => {
+        const colorClass = Array.from(btn.classList).find(c => /^collar\d+$/.test(c));
+        const isAllowed = !allowed || allowed.indexOf(colorClass) !== -1;
+
+        if (isAllowed) {
+            btn.classList.remove('color-unavailable');
+            btn.style.pointerEvents = '';
+            btn.title = COLLAR_COLOR_NAMES[colorClass] || '';
+        } else {
+            btn.classList.add('color-unavailable');
+            btn.style.pointerEvents = 'none';
+            btn.title = (COLLAR_COLOR_NAMES[colorClass] || '') + ' — Agotado en XS';
+            if (btn.classList.contains('active')) activeIsUnavailable = true;
+        }
+    });
+
+    // Aviso de colores limitados
+    const colorNotice = document.getElementById('xs-color-notice');
+    if (colorNotice) colorNotice.style.display = allowed ? 'block' : 'none';
+
+    // Si el color seleccionado quedó agotado, pasar al primer color disponible
+    if (activeIsUnavailable && allowed && allowed.length) {
+        const firstClass = allowed[0];
+        changeCollarColor(firstClass, COLLAR_COLOR_NAMES[firstClass]);
+    }
 }
 
 // Función: Cambiar color del collar
 function changeCollarColor(colorClass, colorName) {
+    // No permitir seleccionar un color sin stock para la talla actual (defensa extra)
+    const allowedColors = COLLAR_COLOR_STOCK_BY_SIZE[collarSize] || null;
+    if (allowedColors && allowedColors.indexOf(colorClass) === -1) return;
+
     // Quitar active de todos
     document.querySelectorAll('.collar-color-option').forEach(btn => {
         btn.classList.remove('active');
@@ -119,17 +220,10 @@ function changeCollarColor(colorClass, colorName) {
     
     const summaryColor = document.getElementById('summary-color');
     if (summaryColor) summaryColor.textContent = colorName;
-    
-    console.log('Color seleccionado:', colorName);
 }
 
 // Función: Cargar emojis de un color específico
 function loadEmojis(colorHex) {
-    console.log('=== CARGANDO EMOJIS ===');
-    console.log('Color solicitado:', colorHex);
-    console.log('ASSETS_BASE_URL:', ASSETS_BASE_URL);
-    console.log('Objeto emojiFiles completo:', emojiFiles);
-    
     // Actualizar color activo
     currentEmojiColor = colorHex;
     currentCharmColor = colorHex;
@@ -141,7 +235,6 @@ function loadEmojis(colorHex) {
     
     // Agregar active al color seleccionado
     const activeBtn = document.querySelector(`.emoji-color-selector[data-color="${colorHex}"]`);
-    console.log('Botón encontrado:', activeBtn);
     if (activeBtn) {
         activeBtn.classList.add('active');
     }
@@ -187,22 +280,15 @@ function loadEmojis(colorHex) {
     
     // Obtener contenedor de emojis
     const emojiGrid = document.getElementById('emojis-display-grid');
-    console.log('Contenedor emojiGrid:', emojiGrid);
-    if (!emojiGrid) {
-        console.error('❌ NO SE ENCONTRÓ EL CONTENEDOR DE EMOJIS');
-        return;
-    }
-    
+    if (!emojiGrid) return;
+
     // Limpiar grid
     emojiGrid.innerHTML = '';
-    
+
     // Obtener archivos de este color
     const files = emojiFiles[colorHex];
-    console.log('Archivos encontrados para', colorHex, ':', files);
-    
     if (!files || files.length === 0) {
-        console.warn('⚠️ NO HAY EMOJIS PARA EL COLOR:', colorHex);
-        console.log('Claves disponibles en emojiFiles:', Object.keys(emojiFiles));
+        console.warn('No hay emojis para el color:', colorHex);
         return;
     }
     
@@ -217,34 +303,25 @@ function loadEmojis(colorHex) {
         // Usar carpeta sin # (ej: FF015B en lugar de #FF015B)
         const folderName = emojiColorToFolder[colorHex] || colorHex.replace('#', '');
         const fullUrl = `${ASSETS_BASE_URL}emojis/${folderName}/${filename}`;
-        console.log(`Emoji ${index + 1} URL:`, fullUrl);
-        
+
         img.src = fullUrl;
         img.alt = `Emoji ${index + 1}`;
         img.onerror = function() {
-            console.error('❌ ERROR CARGANDO IMAGEN:', this.src);
             this.style.display = 'none';
         };
-        
+
         emojiBtn.appendChild(img);
         emojiGrid.appendChild(emojiBtn);
     });
-    
-    console.log(`✓ Se crearon ${files.length} elementos de emoji para ${colorHex}`);
 }
 
 // Función: Añadir un charm (letra, número o emoji)
 function addCharm(item, colorHex = null, isEmoji = false) {
-    // Verificar límite máximo técnico (por espacio en el collar)
+    // Límite máximo de charms por talla. La UI ya queda bloqueada visualmente,
+    // esto es una salvaguarda silenciosa por si llega un clic igual.
     if (currentCharms.length >= maxCharms) {
-        alert(`Máximo ${maxCharms} charms permitidos por espacio en el collar`);
+        updateCharmLimitUI();
         return;
-    }
-    
-    // Mostrar advertencia si pasa de los 6 incluidos (pero sí permitir)
-    if (currentCharms.length >= baseCharms) {
-        const extraPrice = extraCharmPrice[collarSize] || 5000;
-        console.log(`Charm extra #${currentCharms.length + 1} (+$${extraPrice.toLocaleString('es-CO')} COP)`);
     }
     
     // Determinar si es letra glitter (Gold o Silver)
@@ -263,8 +340,6 @@ function addCharm(item, colorHex = null, isEmoji = false) {
     updateCharmsDisplay();
     updateSummary();
     saveConfiguration();
-    
-    console.log('Charm añadido:', charm);
 }
 
 // Función: Actualizar visualización de charms
@@ -325,6 +400,33 @@ function updateCharmsDisplay() {
         collarWidth = Math.min(collarWidth, window.innerWidth * 0.4);
         collarBand.style.width = collarWidth + 'px';
     }
+
+    // Bloquear/desbloquear el teclado y los emojis según el límite de charms
+    updateCharmLimitUI();
+}
+
+// Bloquea visualmente las letras y emojis cuando se alcanza el máximo de charms
+// de la talla actual, y muestra un mensaje en lugar de un alert intrusivo.
+function updateCharmLimitUI() {
+    const atLimit    = currentCharms.length >= maxCharms;
+    const keyboard   = document.querySelector('.letters-number-keyboard');
+    const emojiGrid  = document.getElementById('emojis-display-grid');
+    const emojiRow   = document.querySelector('.emoji-colors-row');
+    const msg        = document.getElementById('charms-limit-msg');
+
+    [keyboard, emojiGrid, emojiRow].forEach(el => {
+        if (!el) return;
+        el.classList.toggle('charm-input-locked', atLimit);
+    });
+
+    if (msg) {
+        if (atLimit) {
+            msg.textContent = `🔒 Llegaste al máximo de ${maxCharms} charms para esta talla. Quita un charm para cambiarlo.`;
+            msg.style.display = 'block';
+        } else {
+            msg.style.display = 'none';
+        }
+    }
 }
 
 // Función: Eliminar un charm específico
@@ -334,7 +436,6 @@ function removeCharm(index) {
         updateCharmsDisplay();
         updateSummary();
         saveConfiguration();
-        console.log('Charm eliminado del índice:', index);
     }
 }
 
@@ -348,11 +449,11 @@ function calculatePrice() {
     }
     
     // Obtener precio base (incluye 6 charms)
-    const basePrice = basePrices[collarSize] || 75900;
+    const basePrice = basePrices[collarSize] || 84900;
     
     // Calcular charms extras (más de 6)
     let extraCharmsCount = Math.max(0, charmsCount - baseCharms);
-    let extraCost = extraCharmsCount * (extraCharmPrice[collarSize] || 5000);
+    let extraCost = extraCharmsCount * (extraCharmPrice[collarSize] || 4800);
     
     // Si tiene menos de 6 charms, descontar por cada uno que falte
     // (esto es opcional, si quieres cobrar menos cuando tienen 5 en vez de 6)
@@ -365,15 +466,40 @@ function calculatePrice() {
 function updatePriceDisplay() {
     const priceElement = document.getElementById('product-price');
     if (!priceElement) return;
-    
+
     const price = calculatePrice();
-    
+
     if (price === null) {
         priceElement.textContent = '-- COP';
         priceElement.style.opacity = '0.5';
     } else {
         priceElement.textContent = `$${price.toLocaleString('es-CO')} COP`;
         priceElement.style.opacity = '1';
+    }
+
+    // Actualizar también el precio del combo Gummy (dinámico según charms y tamaño)
+    updateBundlePrice();
+}
+
+// Recalcular precio del combo (collar actual + Gummy con descuento) en tiempo real.
+// Precio Gummy bundle: $53.000 en todas las tallas (~10% off sobre $58.900).
+function updateBundlePrice() {
+    // Para el cálculo del bundle siempre usamos AL MENOS el precio base de 6 charms,
+    // aunque el cliente todavía no haya completado los 6 charms.
+    const basePrice = basePrices[collarSize] || 84900;
+    const extraCount = Math.max(0, currentCharms.length - baseCharms);
+    const extraCost = extraCount * (extraCharmPrice[collarSize] || 4800);
+    const collarPrice = basePrice + extraCost;
+
+    const gummyBundle = 53000;
+    const total = collarPrice + gummyBundle;
+
+    const target = (collarSize === 'XS')
+        ? document.getElementById('bundle-xs-price')
+        : document.getElementById('bundle-other-price');
+
+    if (target) {
+        target.textContent = `$${total.toLocaleString('es-CO')}`;
     }
 }
 
@@ -386,7 +512,6 @@ function emptyCharms() {
         updateCharmsDisplay();
         updateSummary();
         saveConfiguration();
-        console.log('Todos los charms eliminados');
     }
 }
 
@@ -419,7 +544,7 @@ function updateSummary() {
     if (summaryExtras) {
         const extras = Math.max(0, count - baseCharms);
         if (extras > 0) {
-            const extraPrice = extraCharmPrice[collarSize] || 5000;
+            const extraPrice = extraCharmPrice[collarSize] || 4800;
             summaryExtras.textContent = `(+${extras} extra${extras > 1 ? 's' : ''}: $${(extras * extraPrice).toLocaleString('es-CO')})`;
         } else {
             summaryExtras.textContent = '';
@@ -461,104 +586,250 @@ function validateConfiguration() {
     };
 }
 
+// Pide un nonce fresco al servidor (admin-ajax NO se cachea). Resuelve el 403 que
+// ocurre cuando LiteSpeed sirve la página cacheada con un nonce ya expirado.
+async function refreshCollarNonce() {
+    const body = new URLSearchParams({ action: 'collar_refresh_nonce' });
+    const r = await fetch(collarConfig.ajaxUrl, { method: 'POST', body, credentials: 'same-origin' });
+    const resp = await r.json();
+    if (resp && resp.success && resp.data && resp.data.nonce) {
+        collarConfig.nonce = resp.data.nonce;
+        return resp.data.nonce;
+    }
+    throw new Error('No se pudo actualizar la sesión. Recarga la página e intenta de nuevo.');
+}
+
+// POST a admin-ajax. Devuelve el JSON, o { _nonceError: true } si el nonce expiró
+// (respuesta 403 o cuerpo no-JSON tipo "-1").
+async function postCollarAjax(formData) {
+    const response = await fetch(collarConfig.ajaxUrl, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin'
+    });
+    if (response.status === 403) return { _nonceError: true };
+    const text = await response.text();
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        return { _nonceError: true };
+    }
+}
+
+// Ejecuta un POST y, si el nonce está expirado, lo refresca y reintenta UNA vez.
+// buildForm(nonce) debe devolver un FormData nuevo usando el nonce recibido.
+async function postCollarAjaxWithRetry(buildForm) {
+    let data = await postCollarAjax(buildForm(collarConfig.nonce));
+    if (data && data._nonceError) {
+        const fresh = await refreshCollarNonce();
+        data = await postCollarAjax(buildForm(fresh));
+    }
+    return data;
+}
+
+function resetAddToCartButton(addButton) {
+    addButton.disabled = false;
+    addButton.innerHTML = '<span class="cart-icon">🛒</span><span class="cart-text">Añadir al carrito</span>';
+}
+
 // Función: Añadir al carrito de WooCommerce
-function addToCart() {
-    console.log('=== Añadiendo al carrito ===');
-    
+async function addToCart() {
     // Validar configuración
     const validation = validateConfiguration();
     const messageDiv = document.getElementById('validation-message');
     const addButton = document.getElementById('add-to-cart-btn');
-    
-    console.log('Validación:', validation);
-    
+
     if (!validation.isValid) {
         messageDiv.textContent = validation.message;
         messageDiv.className = 'validation-message error';
         return;
     }
-    
+
     // Deshabilitar botón mientras procesa
     addButton.disabled = true;
     addButton.innerHTML = '<span class="cart-icon">⏳</span><span class="cart-text">Añadiendo...</span>';
-    
+
     // Preparar datos
     const productId = document.getElementById('product-id')?.value;
-    console.log('Product ID:', productId);
-    console.log('collarConfig:', collarConfig);
-    
+
     if (!productId || productId === '') {
         messageDiv.textContent = 'Error: No se ha configurado el ID del producto. Ve a Ajustes → Configurador de Collar';
         messageDiv.className = 'validation-message error';
-        addButton.disabled = false;
-        addButton.innerHTML = '<span class="cart-icon">🛒</span><span class="cart-text">Añadir al carrito</span>';
+        resetAddToCartButton(addButton);
         return;
     }
-    
-    // Enviar al servidor via AJAX
-    const formData = new FormData();
-    formData.append('action', 'collar_add_to_cart');
-    formData.append('nonce', collarConfig.nonce);
-    formData.append('product_id', productId);
-    formData.append('collar_size', collarSize);
-    formData.append('collar_color', collarColor);
-    formData.append('charms_count', currentCharms.length);
-    formData.append('charms_data', JSON.stringify(currentCharms));
-    formData.append('price', calculatePrice()); // Enviar el precio calculado
-    
-    fetch(collarConfig.ajaxUrl, {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        console.log('Respuesta del servidor:', response);
-        return response.json();
-    })
-    .then(data => {
-        console.log('Datos recibidos:', data);
-        if (data.success) {
+
+    const buildForm = (nonce) => {
+        const fd = new FormData();
+        fd.append('action', 'collar_add_to_cart');
+        fd.append('nonce', nonce);
+        fd.append('product_id', productId);
+        fd.append('collar_size', collarSize);
+        fd.append('collar_color', collarColor);
+        fd.append('charms_count', currentCharms.length);
+        fd.append('charms_data', JSON.stringify(currentCharms));
+        return fd;
+    };
+
+    try {
+        const data = await postCollarAjaxWithRetry(buildForm);
+        if (data && data.success) {
             messageDiv.textContent = '✓ ¡Añadido al carrito con éxito!';
             messageDiv.className = 'validation-message success';
-            
-            // Redirigir al carrito después de 1 segundo
             setTimeout(() => {
                 window.location.href = data.data.cart_url || '/carrito';
             }, 1500);
         } else {
-            console.error('Error del servidor:', data);
-            messageDiv.textContent = data.data.message || 'Error al añadir al carrito';
+            messageDiv.textContent = (data && data.data && data.data.message)
+                ? data.data.message
+                : 'No se pudo añadir al carrito. Recarga la página e intenta de nuevo.';
             messageDiv.className = 'validation-message error';
-            addButton.disabled = false;
-            addButton.innerHTML = '<span class="cart-icon">🛒</span><span class="cart-text">Añadir al carrito</span>';
+            resetAddToCartButton(addButton);
         }
-    })
-    .catch(error => {
-        console.error('Error de conexión:', error);
-        messageDiv.textContent = 'Error de conexión. Intenta de nuevo.';
+    } catch (err) {
+        messageDiv.textContent = err.message || 'Error de conexión. Intenta de nuevo.';
         messageDiv.className = 'validation-message error';
-        addButton.disabled = false;
-        addButton.innerHTML = '<span class="cart-icon">🛒</span><span class="cart-text">Añadir al carrito</span>';
-    });
+        resetAddToCartButton(addButton);
+    }
 }
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Configurador de collar Wawas inicializado');
-    console.log('Assets URL:', ASSETS_BASE_URL);
-    
-    // Inicializar displays
     updateCharmsDisplay();
     updateSummary();
-    
-    // Cargar emojis del primer color por defecto (#BA0000 - rojo, que sí tiene imágenes)
-    console.log('Cargando emojis iniciales...');
-    loadEmojis('#BA0000');
-    
-    console.log('Estado inicial:');
-    console.log('- Tamaño:', collarSize);
-    console.log('- Color:', collarColor);
-    console.log('- Charms:', currentCharms.length);
+    loadEmojis('#FF64DC');
 });
+
+// Función: Cambiar foto principal de la galería
+function setCollarPhoto(btn) {
+    document.querySelectorAll('.collar-thumb-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const mainPhoto = document.getElementById('collar-main-photo');
+    if (mainPhoto) mainPhoto.src = btn.dataset.src;
+}
+
+// El visor es un cuadro 1:1 con object-fit: cover; las fotos que no son cuadradas
+// se muestran completas en vez de recortarse. Las horizontales toman su propia
+// proporción: dentro del cuadro quedaban bandas grises que parecían un corte.
+(function() {
+    const init = function() {
+        const mainPhoto = document.getElementById('collar-main-photo');
+        if (!mainPhoto) return;
+        const fit = function() {
+            if (!mainPhoto.naturalWidth) return;
+            const ratio = mainPhoto.naturalWidth / mainPhoto.naturalHeight;
+            const square = Math.abs(ratio - 1) <= 0.05;
+            mainPhoto.style.aspectRatio = ratio > 1.05 ? String(ratio) : '';
+            mainPhoto.style.objectFit = square || ratio > 1.05 ? 'cover' : 'contain';
+        };
+        mainPhoto.addEventListener('load', fit);
+        if (mainPhoto.complete) fit();
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+})();
+
+// Función: Actualizar sección bundle según el tamaño del collar
+function updateBundleDisplay() {
+    var xsOffer    = document.getElementById('bundle-xs-offer');
+    var otherOffer = document.getElementById('bundle-other-offer');
+    if (!xsOffer || !otherOffer) return;
+
+    if (collarSize === 'XS') {
+        xsOffer.style.display    = 'block';
+        otherOffer.style.display = 'none';
+    } else {
+        xsOffer.style.display    = 'none';
+        otherOffer.style.display = 'block';
+        var collarSizeSpan = document.getElementById('bundle-collar-size');
+        var gummySizeSpan  = document.getElementById('bundle-gummy-size');
+        if (collarSizeSpan) collarSizeSpan.textContent = collarSize;
+        if (gummySizeSpan)  gummySizeSpan.textContent  = collarSize;
+    }
+}
+
+// Función: Añadir bundle (collar + gummy) al carrito
+async function addBundleToCart(gummySize, bundleGummyPrice) {
+    const validation = validateConfiguration();
+    const messageDiv = document.getElementById('validation-message');
+
+    if (!validation.isValid) {
+        messageDiv.textContent = validation.message;
+        messageDiv.className   = 'validation-message error';
+        // Scroll suave hacia el mensaje
+        messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+    }
+
+    const productId     = document.getElementById('product-id')?.value;
+    const gummyProdId   = typeof collarConfig !== 'undefined' ? collarConfig.gummyProductId : 0;
+
+    if (!productId) {
+        messageDiv.textContent = 'Error: No se ha configurado el ID del producto.';
+        messageDiv.className   = 'validation-message error';
+        return;
+    }
+    if (!gummyProdId) {
+        messageDiv.textContent = 'Error: No se ha configurado el producto Gummy. Ve a Ajustes → Configurador de Collar.';
+        messageDiv.className   = 'validation-message error';
+        return;
+    }
+
+    // Deshabilitar botones
+    document.querySelectorAll('.bundle-add-btn').forEach(btn => {
+        btn.disabled     = true;
+        btn.textContent  = '⏳ Añadiendo...';
+    });
+    document.getElementById('add-to-cart-btn').disabled = true;
+
+    try {
+        // 1. Añadir collar (con reintento si el nonce expiró por caché)
+        const collarResp = await postCollarAjaxWithRetry((nonce) => {
+            const fd = new FormData();
+            fd.append('action',       'collar_add_to_cart');
+            fd.append('nonce',        nonce);
+            fd.append('product_id',   productId);
+            fd.append('collar_size',  collarSize);
+            fd.append('collar_color', collarColor);
+            fd.append('charms_count', currentCharms.length);
+            fd.append('charms_data',  JSON.stringify(currentCharms));
+            return fd;
+        });
+        if (!collarResp || !collarResp.success) {
+            throw new Error((collarResp && collarResp.data && collarResp.data.message) || 'Error al añadir el collar');
+        }
+
+        // 2. Añadir gummy a precio de bundle
+        const gummyResp = await postCollarAjaxWithRetry((nonce) => {
+            const fd = new FormData();
+            fd.append('action',       'gummy_add_to_cart');
+            fd.append('nonce',        nonce);
+            fd.append('product_id',   gummyProdId);
+            fd.append('gummy_size',   gummySize);
+            fd.append('bundle_price', bundleGummyPrice);
+            return fd;
+        });
+        if (!gummyResp || !gummyResp.success) {
+            throw new Error((gummyResp && gummyResp.data && gummyResp.data.message) || 'Error al añadir el Collar Gummy');
+        }
+
+        messageDiv.textContent = '✓ ¡Bundle añadido al carrito!';
+        messageDiv.className   = 'validation-message success';
+        setTimeout(() => {
+            window.location.href = gummyResp.data.cart_url || '/carrito';
+        }, 1500);
+    } catch (err) {
+        messageDiv.textContent = err.message || 'Error de conexión. Intenta de nuevo.';
+        messageDiv.className   = 'validation-message error';
+        document.querySelectorAll('.bundle-add-btn').forEach(btn => {
+            btn.disabled    = false;
+            btn.textContent = 'Añadir combo';
+        });
+        const addBtn = document.getElementById('add-to-cart-btn');
+        addBtn.disabled = false;
+        addBtn.innerHTML = '<span class="cart-icon">🛒</span><span class="cart-text">Añadir al carrito</span>';
+    }
+}
 
 // Exportar funciones globalmente
 window.changeCollarSize = changeCollarSize;
@@ -568,6 +839,8 @@ window.addCharm = addCharm;
 window.removeCharm = removeCharm;
 window.emptyCharms = emptyCharms;
 window.addToCart = addToCart;
+window.setCollarPhoto = setCollarPhoto;
+window.addBundleToCart = addBundleToCart;
 
 window.collarConfigurator = {
     changeCollarSize,
@@ -602,51 +875,8 @@ document.addEventListener('DOMContentLoaded', function() {
         silverButton.style.backgroundSize = 'cover';
         silverButton.style.backgroundPosition = 'center';
     }
-    
-    // Inicializar carrusel
-    initCarousel();
+
+    // Mostrar bundle según talla inicial
+    updateBundleDisplay();
 });
-
-// Carrusel de imágenes
-let currentSlide = 0;
-
-function initCarousel() {
-    showSlide(currentSlide);
-}
-
-function moveCarousel(direction) {
-    const images = document.querySelectorAll('.carousel-image');
-    
-    currentSlide += direction;
-    
-    if (currentSlide >= images.length) {
-        currentSlide = 0;
-    } else if (currentSlide < 0) {
-        currentSlide = images.length - 1;
-    }
-    
-    showSlide(currentSlide);
-}
-
-function goToSlide(index) {
-    currentSlide = index;
-    showSlide(currentSlide);
-}
-
-function showSlide(index) {
-    const images = document.querySelectorAll('.carousel-image');
-    const dots = document.querySelectorAll('.dot');
-    
-    images.forEach((img, i) => {
-        img.classList.toggle('active', i === index);
-    });
-    
-    dots.forEach((dot, i) => {
-        dot.classList.toggle('active', i === index);
-    });
-}
-
-// Hacer funciones globales
-window.moveCarousel = moveCarousel;
-window.goToSlide = goToSlide;
 
