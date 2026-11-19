@@ -101,18 +101,18 @@ class CollarConfiguratorAJAX {
 
     const BASE_PRICES = array(
         'XS' => 69800,
-        'S'  => 75800,
-        'M'  => 75800,
-        'L'  => 75800,
-        'XL' => 75800,
+        'S'  => 84900,
+        'M'  => 84900,
+        'L'  => 84900,
+        'XL' => 84900,
     );
 
     const EXTRA_CHARM_PRICE = array(
         'XS' => 3000,
-        'S'  => 4000,
-        'M'  => 4000,
-        'L'  => 4000,
-        'XL' => 4000,
+        'S'  => 4800,
+        'M'  => 4800,
+        'L'  => 4800,
+        'XL' => 4800,
     );
 
     const BASE_CHARMS_INCLUDED = 6;
@@ -133,13 +133,13 @@ class CollarConfiguratorAJAX {
     // Las demás tallas admiten todos los colores, por eso no se listan aquí.
     const XS_ALLOWED_COLORS = array('Rosa', 'Rojo', 'Azul');
 
-    // Precio del Gummy dentro del bundle, por tamaño del collar (10% off).
+    // Precio del Gummy dentro del bundle, por tamaño del collar (~10% off sobre $58.900).
     const BUNDLE_GUMMY_PRICE = array(
-        'XS' => 38000,
-        'S'  => 37300,
-        'M'  => 37300,
-        'L'  => 37300,
-        'XL' => 37300,
+        'XS' => 53000,
+        'S'  => 53000,
+        'M'  => 53000,
+        'L'  => 53000,
+        'XL' => 53000,
     );
 
     /**
@@ -368,7 +368,7 @@ class CollarConfiguratorAJAX {
         $zone = $this->get_order_shipping_zone($order);
         $zone_labels = array(
             'local'    => array('label' => 'Bogotá, Chía y Cota', 'eta' => '4–5 días hábiles'),
-            'nacional' => array('label' => 'Nivel Nacional',       'eta' => '4–5 días hábiles'),
+            'nacional' => array('label' => 'Nacional (ciudades principales)', 'eta' => '4–5 días hábiles'),
             'recoger'  => array('label' => 'Pasar a recoger',      'eta' => 'Te avisamos cuando esté listo'),
         );
         $wa = $this->get_whatsapp_contact_data($this->get_order_whatsapp_message($order));
@@ -668,7 +668,7 @@ class CollarConfiguratorAJAX {
         if ($zone) {
             $zone_labels = array(
                 'local'    => 'Envío Deprisa · Bogotá, Chía y Cota ($8.900)',
-                'nacional' => 'Envío Deprisa · Nivel Nacional ($13.900)',
+                'nacional' => 'Envío Deprisa · Nacional, ciudades principales ($14.900)',
                 'recoger'  => 'Pasar a recoger (Gratis)',
             );
             if (isset($zone_labels[$zone])) {
@@ -905,7 +905,7 @@ class CollarConfiguratorAJAX {
     public function collar_price_html( $price, $product ) {
         $collar_product_id = (int) get_option( 'collar_product_id', 0 );
         if ( $collar_product_id && $product->get_id() === $collar_product_id ) {
-            return '<span class="woocommerce-Price-amount amount">Desde $69.800 COP</span>';
+            return '<span class="woocommerce-Price-amount amount">Desde $84.900 COP</span>';
         }
         return $price;
     }
@@ -972,7 +972,7 @@ class CollarConfiguratorAJAX {
 
         $options = array(
             'local'    => array('label' => 'Bogotá, Chía y Cota',  'price' => '$8.900',  'note' => '4–5 días hábiles', 'color' => '#374151'),
-            'nacional' => array('label' => 'Resto del país',        'price' => '$13.900', 'note' => '4–5 días hábiles', 'color' => '#374151'),
+            'nacional' => array('label' => 'Nacional (ciudades principales)', 'price' => '$14.900', 'note' => '4–5 días hábiles', 'color' => '#374151'),
             'recoger'  => array('label' => 'Pasar a recoger',       'price' => 'Gratis',  'note' => '',                 'color' => '#16a34a'),
         );
         $wa = $this->get_whatsapp_contact_data('Hola, quiero coordinar la recogida de mi pedido.');
@@ -996,6 +996,9 @@ class CollarConfiguratorAJAX {
                 </li>
             <?php endforeach; ?>
             </ul>
+            <p style="margin:10px 0 0;font-size:13px;line-height:1.5;color:#6b7280;">
+                🐾 ¡Enviamos a toda Colombia 🇨🇴! La tarifa nacional aplica para ciudades principales. Para otros destinos, te contactaremos si es necesario ajustar el valor del envío. 💛
+            </p>
 
             <!-- Campos de dirección de envío (visible cuando no es "recoger") -->
             <div id="collar-delivery-address" style="<?php echo $show_addr ? '' : 'display:none;'; ?>margin-top:16px;">
@@ -1193,7 +1196,7 @@ class CollarConfiguratorAJAX {
     public static function shipping_options() {
         return array(
             'local'    => array('label' => 'Envío Deprisa · Bogotá, Chía y Cota', 'cost' => 8900),
-            'nacional' => array('label' => 'Envío Deprisa · Nivel Nacional',       'cost' => 13900),
+            'nacional' => array('label' => 'Envío Deprisa · Nacional (ciudades principales)', 'cost' => 14900),
             'recoger'  => array('label' => 'Pasar a recoger',                       'cost' => 0),
         );
     }
@@ -2363,7 +2366,7 @@ class CollarConfiguratorAJAX {
                                     $ship_zone  = $this->get_order_shipping_zone($wc_order);
                                     $zone_label = array(
                                         'local'    => 'Bogotá, Chía y Cota ($8.900)',
-                                        'nacional' => 'Nivel Nacional ($13.900)',
+                                        'nacional' => 'Nacional, ciudades principales ($14.900)',
                                         'recoger'  => 'Pasar a recoger (Gratis)',
                                     );
                                     $ship_method = isset($zone_label[$ship_zone]) ? $zone_label[$ship_zone] : '—';
@@ -3465,7 +3468,7 @@ function collares_home_shortcode($atts) {
                     <span class="collar-card-tag">✨ Personalizado</span>
                     <h3 class="collar-card-title">Collar de Charms Personalizado</h3>
                     <p class="collar-card-desc">Diseña un collar único para tu peludo: elige tamaño, color y arma su nombre con charms de letras, números y emojis.</p>
-                    <div class="collar-card-price">Desde $69.800 <small>COP</small></div>
+                    <div class="collar-card-price">Desde $84.900 <small>COP</small></div>
                     <a href="<?php echo esc_url($collar_url ?: '#'); ?>" class="collar-card-btn btn-pink">Personalizar ahora</a>
                 </div>
             </div>
@@ -3483,7 +3486,7 @@ function collares_home_shortcode($atts) {
                     <span class="collar-card-tag" style="background:#fef3c7;color:#92400e;border-color:#fde68a;">🍬 Charms incluidos</span>
                     <h3 class="collar-card-title">Collar Gummy</h3>
                     <p class="collar-card-desc">Diseño divertido con charms decorativos ya incluidos. Disponible en varias tallas para tu peludo.</p>
-                    <div class="collar-card-price">$49.900 <small>COP</small></div>
+                    <div class="collar-card-price">$58.900 <small>COP</small></div>
                     <a href="<?php echo esc_url($gummy_url ?: '#'); ?>" class="collar-card-btn">Comprar Gummy</a>
                 </div>
             </div>

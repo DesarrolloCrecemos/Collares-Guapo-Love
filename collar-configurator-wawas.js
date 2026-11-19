@@ -25,19 +25,19 @@ let maxCharms = MAX_CHARMS_BY_SIZE['S']; // Se actualiza al cambiar de talla
 // Precios base (con 6 charms incluidos)
 const basePrices = {
     'XS': 69800,
-    'S': 75800,
-    'M': 75800,
-    'L': 75800,
-    'XL': 75800
+    'S': 84900,
+    'M': 84900,
+    'L': 84900,
+    'XL': 84900
 };
 
 // Precio por charm extra
 const extraCharmPrice = {
     'XS': 3000,
-    'S': 4000,
-    'M': 4000,
-    'L': 4000,
-    'XL': 4000
+    'S': 4800,
+    'M': 4800,
+    'L': 4800,
+    'XL': 4800
 };
 
 // Mapeo de colores hex a código de carpeta (sin #)
@@ -449,11 +449,11 @@ function calculatePrice() {
     }
     
     // Obtener precio base (incluye 6 charms)
-    const basePrice = basePrices[collarSize] || 75900;
+    const basePrice = basePrices[collarSize] || 84900;
     
     // Calcular charms extras (más de 6)
     let extraCharmsCount = Math.max(0, charmsCount - baseCharms);
-    let extraCost = extraCharmsCount * (extraCharmPrice[collarSize] || 5000);
+    let extraCost = extraCharmsCount * (extraCharmPrice[collarSize] || 4800);
     
     // Si tiene menos de 6 charms, descontar por cada uno que falte
     // (esto es opcional, si quieres cobrar menos cuando tienen 5 en vez de 6)
@@ -482,16 +482,16 @@ function updatePriceDisplay() {
 }
 
 // Recalcular precio del combo (collar actual + Gummy con descuento) en tiempo real.
-// Precio Gummy bundle: $38.000 para XS, $37.300 para los demás tamaños.
+// Precio Gummy bundle: $53.000 en todas las tallas (~10% off sobre $58.900).
 function updateBundlePrice() {
     // Para el cálculo del bundle siempre usamos AL MENOS el precio base de 6 charms,
     // aunque el cliente todavía no haya completado los 6 charms.
-    const basePrice = basePrices[collarSize] || 75800;
+    const basePrice = basePrices[collarSize] || 84900;
     const extraCount = Math.max(0, currentCharms.length - baseCharms);
-    const extraCost = extraCount * (extraCharmPrice[collarSize] || 5000);
+    const extraCost = extraCount * (extraCharmPrice[collarSize] || 4800);
     const collarPrice = basePrice + extraCost;
 
-    const gummyBundle = (collarSize === 'XS') ? 38000 : 37300;
+    const gummyBundle = 53000;
     const total = collarPrice + gummyBundle;
 
     const target = (collarSize === 'XS')
@@ -544,7 +544,7 @@ function updateSummary() {
     if (summaryExtras) {
         const extras = Math.max(0, count - baseCharms);
         if (extras > 0) {
-            const extraPrice = extraCharmPrice[collarSize] || 5000;
+            const extraPrice = extraCharmPrice[collarSize] || 4800;
             summaryExtras.textContent = `(+${extras} extra${extras > 1 ? 's' : ''}: $${(extras * extraPrice).toLocaleString('es-CO')})`;
         } else {
             summaryExtras.textContent = '';

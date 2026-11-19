@@ -301,7 +301,7 @@
                     </div>
                     <div class="tip-item">
                         <span class="tip-icon">✨</span>
-                        <p>Más de 6 charms tienen un costo adicional: <strong>+$4.000</strong> por cada charm extra.</p>
+                        <p>Más de 6 charms tienen un costo adicional: <strong>+$4.800</strong> por cada charm extra.</p>
                     </div>
                     <div class="tip-item">
                         <span class="tip-icon">🐾</span>
@@ -408,7 +408,7 @@
                         <img src="<?php echo $plugin_url; ?>assets/icons/IMG_6560.jpg.png" alt="" class="step-icon">
                         <strong>Paso 3:</strong> Personaliza tus charms
                     </h4>
-                    <p class="charms-info">Incluye 6 charms. Puedes agregar más (+$4.000 c/u)</p>
+                    <p class="charms-info">Incluye 6 charms. Puedes agregar más (+$4.800 c/u)</p>
                     <div id="charms-limit-msg"></div>
                     
                     <!-- Selector de color de emojis (orden: cálidos → fríos → metálicos) -->
@@ -526,8 +526,8 @@
                                     <p class="bundle-title">COLLAR CHARMS XS<br>+ COLLAR GUMMY XS</p>
                                 </div>
                                 <div class="bundle-right">
-                                    <div class="bundle-price" id="bundle-xs-price">$107.800</div>
-                                    <button class="bundle-add-btn" onclick="addBundleToCart('XS', 38000)">Añadir combo</button>
+                                    <div class="bundle-price" id="bundle-xs-price">$122.800</div>
+                                    <button class="bundle-add-btn" onclick="addBundleToCart('XS', 53000)">Añadir combo</button>
                                     <a href="<?php echo esc_url(get_option('gummy_page_url', '#')); ?>" class="bundle-gummy-link" target="_blank">Ver Gummy →</a>
                                 </div>
                             </div>
@@ -539,8 +539,8 @@
                                     <p class="bundle-title">COLLAR CHARMS <span id="bundle-collar-size">S</span><br>+ COLLAR GUMMY <span id="bundle-gummy-size">S</span></p>
                                 </div>
                                 <div class="bundle-right">
-                                    <div class="bundle-price" id="bundle-other-price">$113.100</div>
-                                    <button class="bundle-add-btn" onclick="addBundleToCart(collarSize, 37300)">Añadir combo</button>
+                                    <div class="bundle-price" id="bundle-other-price">$137.900</div>
+                                    <button class="bundle-add-btn" onclick="addBundleToCart(collarSize, 53000)">Añadir combo</button>
                                     <a href="<?php echo esc_url(get_option('gummy_page_url', '#')); ?>" class="bundle-gummy-link" target="_blank">Ver Gummy →</a>
                                 </div>
                             </div>
