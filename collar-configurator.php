@@ -1722,7 +1722,7 @@ class CollarConfiguratorAJAX {
                         <th scope="row">ID del Producto Collar Gummy</th>
                         <td>
                             <input type="number" name="gummy_product_id" value="<?php echo esc_attr($gummy_product_id); ?>" class="regular-text" />
-                            <p class="description">ID del producto WooCommerce del Collar Gummy ($49.900, tallas XS/M/L/XL). Úsalo con el shortcode <code>[collar_gummy]</code>.</p>
+                            <p class="description">ID del producto WooCommerce del Collar Gummy ($58.900, tallas XS/M/L/XL). Úsalo con el shortcode <code>[collar_gummy]</code>.</p>
                         </td>
                     </tr>
                     <tr>
@@ -3160,7 +3160,7 @@ function collar_gummy_shortcode() {
         <!-- Info -->
         <div class="gummy-info-col">
             <h1 class="gummy-product-title">Collar Gummy</h1>
-            <div class="gummy-price-display">$49.900 COP</div>
+            <div class="gummy-price-display">$58.900 COP</div>
             <span class="gummy-included-tag">Charms incluidos</span>
 
             <?php if (!empty($product_desc)): ?>

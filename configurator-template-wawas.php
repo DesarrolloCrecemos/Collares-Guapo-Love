@@ -337,7 +337,7 @@
                     <div class="gummy-preview-info">
                         <p class="gummy-preview-tag">También te puede gustar</p>
                         <p class="gummy-preview-name">Collar Gummy</p>
-                        <p class="gummy-preview-price">$49.900 COP</p>
+                        <p class="gummy-preview-price">$58.900 COP</p>
                         <p class="gummy-preview-cta">Ver más →</p>
                     </div>
                 </a>
@@ -497,7 +497,7 @@
                     <div class="gummy-preview-info">
                         <p class="gummy-preview-tag">También te puede gustar</p>
                         <p class="gummy-preview-name">Collar Gummy</p>
-                        <p class="gummy-preview-price">$49.900 COP</p>
+                        <p class="gummy-preview-price">$58.900 COP</p>
                         <p class="gummy-preview-cta">Ver más →</p>
                     </div>
                 </a>
