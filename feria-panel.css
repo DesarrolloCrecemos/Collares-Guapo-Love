@@ -803,6 +803,23 @@ button { font-family: inherit; cursor: pointer; }
 .feria-emoji:active { transform: scale(.92); }
 .feria-emoji img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
+/* Letras y emojis sin stock en el color activo */
+.feria-key.is-agotada,
+.feria-emoji.is-agotada {
+    position: relative;
+    opacity: .3;
+    filter: grayscale(80%);
+    cursor: not-allowed;
+}
+.feria-key.is-agotada::after,
+.feria-emoji.is-agotada::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cline x1='12' y1='88' x2='88' y2='12' stroke='%23b91c1c' stroke-width='6'/%3E%3C/svg%3E") center/100% 100% no-repeat;
+    pointer-events: none;
+}
+
 /* Bloqueo visual al llegar al máximo de charms */
 .feria-tabpanel.is-locked,
 .feria-charm-colors.is-locked {

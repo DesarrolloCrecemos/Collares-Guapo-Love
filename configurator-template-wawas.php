@@ -31,6 +31,29 @@
     pointer-events: none;
 }
 
+/* Letras y emojis sin stock en el color de charm activo */
+.letter-key.pieza-agotada,
+.emoji-item.pieza-agotada {
+    position: relative;
+    opacity: 0.3;
+    cursor: not-allowed !important;
+    filter: grayscale(80%);
+}
+.letter-key.pieza-agotada::after,
+.emoji-item.pieza-agotada::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cline x1='12' y1='88' x2='88' y2='12' stroke='%23b91c1c' stroke-width='6'/%3E%3C/svg%3E") center/100% 100% no-repeat;
+    pointer-events: none;
+}
+.piezas-agotadas-note {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #6b7280;
+    text-align: center;
+}
+
 /* Colores del collar sin stock para la talla seleccionada (ej. XS) */
 .collar-color-option.color-unavailable {
     position: relative;

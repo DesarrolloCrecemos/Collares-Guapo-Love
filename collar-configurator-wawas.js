@@ -276,8 +276,16 @@ function loadEmojis(colorHex) {
             key.style.textShadow = 'none';
             key.style.boxShadow = 'none';
         }
+
+        // Letras sin stock en este color: apagadas y sin clic
+        const agotada = isPiezaAgotada(colorHex, key.textContent.trim());
+        key.classList.toggle('pieza-agotada', agotada);
+        key.disabled = agotada;
+        key.title = agotada ? 'Agotada en este color' : '';
     });
-    
+
+    updatePiezasAgotadasNote(colorHex);
+
     // Obtener contenedor de emojis
     const emojiGrid = document.getElementById('emojis-display-grid');
     if (!emojiGrid) return;
@@ -298,7 +306,12 @@ function loadEmojis(colorHex) {
         emojiBtn.className = 'emoji-item';
         emojiBtn.onclick = () => addCharm(filename, colorHex, true);
         emojiBtn.title = `Emoji ${index + 1}`;
-        
+        if (isPiezaAgotada(colorHex, filename)) {
+            emojiBtn.classList.add('pieza-agotada');
+            emojiBtn.disabled = true;
+            emojiBtn.title = 'Agotado en este color';
+        }
+
         const img = document.createElement('img');
         // Usar carpeta sin # (ej: FF015B en lugar de #FF015B)
         const folderName = emojiColorToFolder[colorHex] || colorHex.replace('#', '');
@@ -315,6 +328,31 @@ function loadEmojis(colorHex) {
     });
 }
 
+// Piezas sueltas sin stock por color (letras o archivos de emoji). La lista se
+// edita en Collares → Ajustes y llega en collarConfig.piezasAgotadas.
+function isPiezaAgotada(colorHex, value) {
+    const mapa = (window.collarConfig && window.collarConfig.piezasAgotadas) || {};
+    const lista = mapa[colorHex] || [];
+    return lista.indexOf(value) !== -1;
+}
+
+// Aviso bajo el teclado cuando el color activo tiene piezas agotadas
+function updatePiezasAgotadasNote(colorHex) {
+    const keyboard = document.querySelector('.letters-number-keyboard');
+    if (!keyboard) return;
+    let note = document.getElementById('piezas-agotadas-note');
+    if (!note) {
+        note = document.createElement('p');
+        note.id = 'piezas-agotadas-note';
+        note.className = 'piezas-agotadas-note';
+        keyboard.parentNode.insertBefore(note, keyboard.nextSibling);
+    }
+    const mapa = (window.collarConfig && window.collarConfig.piezasAgotadas) || {};
+    const hay = (mapa[colorHex] || []).length > 0;
+    note.textContent = hay ? 'Las piezas en gris están agotadas en este color. ¡Pruébalas en otro color!' : '';
+    note.style.display = hay ? 'block' : 'none';
+}
+
 // Función: Añadir un charm (letra, número o emoji)
 function addCharm(item, colorHex = null, isEmoji = false) {
     // Límite máximo de charms por talla. La UI ya queda bloqueada visualmente,
@@ -323,9 +361,12 @@ function addCharm(item, colorHex = null, isEmoji = false) {
         updateCharmLimitUI();
         return;
     }
-    
+
     // Determinar si es letra glitter (Gold o Silver)
     const activeColor = isEmoji ? colorHex : currentCharmColor;
+
+    // Pieza sin stock en este color (la tecla ya está apagada; salvaguarda)
+    if (isPiezaAgotada(activeColor, item)) return;
     const isGlitter = (activeColor === '#GOLD' || activeColor === '#SILVER');
     
     const charm = {

@@ -269,7 +269,18 @@
                 b.style.color = state.charmColor;
                 b.style.textShadow = 'none';
             }
+
+            var agotada = isPiezaAgotada(state.charmColor, b.textContent);
+            b.classList.toggle('is-agotada', agotada);
+            b.disabled = agotada;
+            b.title = agotada ? 'Agotada en este color' : '';
         });
+    }
+
+    /** Letra o emoji sin stock en ese color (lista de Collares → Ajustes). */
+    function isPiezaAgotada(hex, value) {
+        var lista = (cfg.piezasAgotadas || {})[hex] || [];
+        return lista.indexOf(value) !== -1;
     }
 
     function buildEmojis() {
@@ -293,6 +304,12 @@
             img.alt = '';
             img.loading = 'lazy';
             b.appendChild(img);
+
+            if (isPiezaAgotada(state.charmColor, file)) {
+                b.classList.add('is-agotada');
+                b.disabled = true;
+                b.title = 'Agotado en este color';
+            }
 
             b.addEventListener('click', function () { addCharm(file, true); });
             grid.appendChild(b);
@@ -346,6 +363,10 @@
     function addCharm(value, isEmoji) {
         if (state.charms.length >= maxCharms()) {
             toast('Máximo ' + maxCharms() + ' charms para la talla ' + state.size + '.', true);
+            return;
+        }
+        if (isPiezaAgotada(state.charmColor, value)) {
+            toast('Esa pieza está agotada en este color.', true);
             return;
         }
 

@@ -82,7 +82,8 @@ function collar_configurador_shortcode($atts) {
             assetsUrl:      '<?php echo esc_js($plugin_url . 'assets/'); ?>',
             ajaxUrl:        '<?php echo esc_js(admin_url('admin-ajax.php')); ?>',
             nonce:          '<?php echo wp_create_nonce('collar_config_nonce'); ?>',
-            gummyProductId: <?php echo (int) get_option('gummy_product_id', 0); ?>
+            gummyProductId: <?php echo (int) get_option('gummy_product_id', 0); ?>,
+            piezasAgotadas: <?php echo wp_json_encode((object) CollarConfiguratorAJAX::piezas_agotadas()); ?>
         };
     }
     
@@ -141,6 +142,94 @@ class CollarConfiguratorAJAX {
         'L'  => 53000,
         'XL' => 53000,
     );
+
+    // Piezas sueltas agotadas (letras o emojis) por color de charm. Se editan en
+    // Collares → Ajustes; esta lista solo es el valor inicial, mientras la opción
+    // no se haya guardado nunca (pedido de Lina, nov 2026).
+    const OPT_PIEZAS_AGOTADAS = 'collar_piezas_agotadas';
+    const PIEZAS_AGOTADAS_INICIAL = array(
+        '#E1FF00' => array('A', 'B', 'G', 'Z', 'PAGINA WEB COLLARES-58.png', 'PAGINA WEB COLLARES-62.png'),
+        '#BA0000' => array('K', 'Ñ', 'Q', 'W', 'X', 'Y', 'PAGINA WEB COLLARES-42.png', 'PAGINA WEB COLLARES-44.png',
+                           'PAGINA WEB COLLARES-45.png', 'PAGINA WEB COLLARES-46.png', 'PAGINA WEB COLLARES-48.png'),
+        '#FF64DC' => array('PAGINA WEB COLLARES-32.png', 'PAGINA WEB COLLARES-33.png'),
+        '#FF5A00' => array('PAGINA WEB COLLARES-50.png', 'PAGINA WEB COLLARES-55.png'),
+        '#00FF51' => array('PAGINA WEB COLLARES-68.png', 'PAGINA WEB COLLARES-75.png'),
+        '#00D6FF' => array('R', 'Ñ', 'PAGINA WEB COLLARES-83.png', 'PAGINA WEB COLLARES-84.png'),
+        '#1900FA' => array('PAGINA WEB COLLARES-87.png', 'PAGINA WEB COLLARES-94.png'),
+        '#A080FF' => array('PAGINA WEB COLLARES-101.png'),
+    );
+
+    // Colores de charm, en el orden en que los muestra la tienda.
+    const CHARM_COLOR_NAMES = array(
+        '#FF64DC' => 'Rosado',
+        '#BA0000' => 'Rojo',
+        '#FF5A00' => 'Naranja',
+        '#E1FF00' => 'Amarillo neón',
+        '#00FF51' => 'Verde',
+        '#00D6FF' => 'Azul claro',
+        '#1900FA' => 'Azul oscuro',
+        '#A080FF' => 'Morado',
+        '#SILVER' => 'Plateado',
+        '#GOLD'   => 'Dorado',
+    );
+
+    // Forma de cada emoji según su posición en la carpeta del color (archivos
+    // ordenados por número). El morado no tiene estrella.
+    const EMOJI_FORMAS = array('corazón', 'estrella', 'flor', 'paz', 'rayo', 'carita feliz', 'calavera', 'mariposa', 'luna');
+
+    const LETRAS_CHARMS = array('A','B','C','D','E','F','G','H','I','J','K','L','M','N','Ñ','O','P','Q','R','S','T','U','V','W','X','Y','Z');
+
+    /** Piezas agotadas por color: array('#HEX' => array(letras y archivos de emoji)). */
+    public static function piezas_agotadas() {
+        $saved = get_option(self::OPT_PIEZAS_AGOTADAS, null);
+        return is_array($saved) ? $saved : self::PIEZAS_AGOTADAS_INICIAL;
+    }
+
+    /** Archivos de emoji de un color, ordenados por número. */
+    public static function emoji_files($hex) {
+        static $cache = array();
+        if (!isset($cache[$hex])) {
+            $files = glob(plugin_dir_path(__FILE__) . 'assets/emojis/' . ltrim($hex, '#') . '/*.png');
+            $names = is_array($files) ? array_map('basename', $files) : array();
+            natsort($names);
+            $cache[$hex] = array_values($names);
+        }
+        return $cache[$hex];
+    }
+
+    /** Nombre legible de una pieza, ej. "K (Rojo)" o "luna (Rojo)". */
+    public static function pieza_label($hex, $value) {
+        $color = isset(self::CHARM_COLOR_NAMES[$hex]) ? self::CHARM_COLOR_NAMES[$hex] : $hex;
+        if (substr($value, -4) !== '.png') {
+            return $value . ' (' . $color . ')';
+        }
+        $formas = self::EMOJI_FORMAS;
+        if ($hex === '#A080FF') {
+            $formas = array_values(array_diff($formas, array('estrella')));
+        }
+        $pos   = array_search($value, self::emoji_files($hex), true);
+        $forma = ($pos !== false && isset($formas[$pos])) ? $formas[$pos] : 'emoji';
+        return $forma . ' (' . $color . ')';
+    }
+
+    /**
+     * Piezas agotadas que trae un diseño. Devuelve sus nombres legibles, sin repetir.
+     * Los charms vienen como array de {value, colorHex, isEmoji}.
+     */
+    public static function charms_agotados($charms) {
+        if (!is_array($charms)) return array();
+        $agotadas = self::piezas_agotadas();
+        $out = array();
+        foreach ($charms as $c) {
+            if (!is_array($c)) continue;
+            $hex   = isset($c['colorHex']) ? strtoupper((string) $c['colorHex']) : '';
+            $value = isset($c['value']) ? (string) $c['value'] : '';
+            if (isset($agotadas[$hex]) && in_array($value, $agotadas[$hex], true)) {
+                $out[] = self::pieza_label($hex, $value);
+            }
+        }
+        return array_values(array_unique($out));
+    }
 
     /**
      * Calcular precio del collar en servidor. Único cálculo confiable.
@@ -1315,6 +1404,14 @@ class CollarConfiguratorAJAX {
             return;
         }
 
+        // Piezas sin stock: la tienda ya las muestra apagadas, esto cubre una pestaña
+        // abierta desde antes del cambio o una petición armada a mano.
+        $agotadas = self::charms_agotados(json_decode(wp_unslash($charms_data), true));
+        if (!empty($agotadas)) {
+            wp_send_json_error(array('message' => 'Estas piezas están agotadas: ' . implode(', ', $agotadas) . '. Quítalas o cámbialas por otro color para continuar.'));
+            return;
+        }
+
         // Calcular precio SERVER-SIDE. El valor enviado por el cliente se ignora.
         $custom_price = $this->calculate_collar_price($collar_size, $charms_count);
         if ($custom_price <= 0) {
@@ -1606,6 +1703,25 @@ class CollarConfiguratorAJAX {
             $messages[] = 'Ajustes guardados.';
         }
 
+        // Piezas agotadas por color. Solo se aceptan valores que existen en el catálogo.
+        if (isset($_POST['save_piezas_agotadas'])) {
+            check_admin_referer('collar_save_piezas', 'collar_piezas_nonce');
+            $posted = isset($_POST['piezas']) && is_array($_POST['piezas']) ? wp_unslash($_POST['piezas']) : array();
+            $clean  = array();
+            foreach (self::CHARM_COLOR_NAMES as $hex => $name) {
+                $key = ltrim($hex, '#');
+                if (empty($posted[$key]) || !is_array($posted[$key])) continue;
+                $valid = array_merge(self::LETRAS_CHARMS, self::emoji_files($hex));
+                $vals  = array_values(array_intersect($valid, array_map('strval', $posted[$key])));
+                if ($vals) $clean[$hex] = $vals;
+            }
+            update_option(self::OPT_PIEZAS_AGOTADAS, $clean, false);
+            // El configurador lleva la lista incrustada en el HTML: sin purga se
+            // seguiría mostrando la anterior.
+            do_action('litespeed_purge_all');
+            $messages[] = 'Piezas agotadas guardadas.';
+        }
+
         // Manejar subida de texturas / fuente
         if (isset($_POST['upload_textures'])) {
             check_admin_referer('collar_upload_textures', 'collar_upload_nonce');
@@ -1742,6 +1858,51 @@ class CollarConfiguratorAJAX {
                 </table>
                 <input type="hidden" name="save_product" value="1" />
                 <?php submit_button('Guardar ID de producto'); ?>
+            </form>
+
+            <?php
+            $agotadas    = self::piezas_agotadas();
+            $assets_url  = plugin_dir_url(__FILE__) . 'assets/emojis/';
+            ?>
+            <h2 id="piezas-agotadas">Piezas agotadas</h2>
+            <p class="description" style="max-width:720px;">Marca las letras y emojis que no hay en bodega. En la tienda y en el Panel Interno se ven apagados y no se pueden agregar. Los cambios se ven en la tienda apenas guardas.</p>
+            <style>
+                .collar-piezas { border-collapse: collapse; margin-top: 12px; }
+                .collar-piezas th { text-align: left; padding: 10px 12px 10px 0; vertical-align: top; white-space: nowrap; }
+                .collar-piezas td { padding: 8px 0; border-top: 1px solid #e5e7eb; }
+                .collar-piezas .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+                .collar-piezas label { display: inline-flex; align-items: center; gap: 3px; border: 1px solid #d1d5db; border-radius: 6px; padding: 2px 6px; background: #fff; cursor: pointer; font-weight: 600; min-width: 34px; }
+                .collar-piezas label:has(input:checked) { background: #fee2e2; border-color: #b91c1c; color: #b91c1c; }
+                .collar-piezas label img { width: 26px; height: 26px; object-fit: contain; }
+                .collar-piezas .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: middle; border: 1px solid #0002; }
+            </style>
+            <form method="post" action="">
+                <?php wp_nonce_field('collar_save_piezas', 'collar_piezas_nonce'); ?>
+                <table class="collar-piezas">
+                    <?php foreach (self::CHARM_COLOR_NAMES as $hex => $name):
+                        $key  = ltrim($hex, '#');
+                        $off  = isset($agotadas[$hex]) ? $agotadas[$hex] : array();
+                        $sw   = $hex === '#GOLD' ? '#d4af37' : ($hex === '#SILVER' ? '#c0c0c0' : $hex);
+                    ?>
+                    <tr>
+                        <th><span class="swatch" style="background:<?php echo esc_attr($sw); ?>"></span><?php echo esc_html($name); ?></th>
+                        <td>
+                            <div class="chips">
+                                <?php foreach (self::LETRAS_CHARMS as $l): ?>
+                                    <label><input type="checkbox" name="piezas[<?php echo esc_attr($key); ?>][]" value="<?php echo esc_attr($l); ?>" <?php checked(in_array($l, $off, true)); ?>><?php echo esc_html($l); ?></label>
+                                <?php endforeach; ?>
+                            </div>
+                            <div class="chips">
+                                <?php foreach (self::emoji_files($hex) as $f): ?>
+                                    <label title="<?php echo esc_attr(self::pieza_label($hex, $f)); ?>"><input type="checkbox" name="piezas[<?php echo esc_attr($key); ?>][]" value="<?php echo esc_attr($f); ?>" <?php checked(in_array($f, $off, true)); ?>><img src="<?php echo esc_url($assets_url . rawurlencode($key) . '/' . rawurlencode($f)); ?>" alt="<?php echo esc_attr(self::pieza_label($hex, $f)); ?>"></label>
+                                <?php endforeach; ?>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </table>
+                <input type="hidden" name="save_piezas_agotadas" value="1" />
+                <?php submit_button('Guardar piezas agotadas'); ?>
             </form>
 
             <h2>Subir texturas / fuente</h2>
