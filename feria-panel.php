@@ -388,6 +388,11 @@ class CollarFeriaPanel {
                 throw new Exception('Hay una letra que no está en el catálogo.');
             }
 
+            $agotada = CollarConfiguratorAJAX::charms_agotados(array(array('value' => $value, 'colorHex' => $hex)));
+            if ($agotada) {
+                throw new Exception('Pieza agotada: ' . $agotada[0] . '. Cámbiala por otro color.');
+            }
+
             $out[] = array(
                 'value'     => $value,
                 'isEmoji'   => $is_emoji,
@@ -720,6 +725,8 @@ class CollarFeriaPanel {
             'emojis'      => $catalog['emojis'],
             'glitter'     => $catalog['glitter'],
             'soldOut'     => array_values($sold_out),
+            // Letras y emojis sueltos sin stock por color (Collares → Ajustes).
+            'piezasAgotadas' => (object) CollarConfiguratorAJAX::piezas_agotadas(),
             'precache'    => $this->get_precache_urls(),
             // Link de pago: tarifas de envío para la cotización del cajón de pago.
             'shipping'    => CollarConfiguratorAJAX::shipping_options(),
